@@ -1,4 +1,4 @@
-# [Raycast](https://www.raycast.com/) extensions
+# Raycast extensions
 
 - Clone the repo
 - Import extension into Raycast
