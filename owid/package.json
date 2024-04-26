@@ -3,7 +3,6 @@
   "name": "owid",
   "title": "OWID",
   "description": "",
-  "icon": "command-icon.png",
   "author": "sophiamersmann",
   "license": "MIT",
   "commands": [
@@ -11,13 +10,15 @@
       "name": "open-staging-site",
       "title": "Open Staging Site",
       "description": "",
-      "mode": "view"
+      "mode": "view",
+      "icon": "open-staging-site.png"
     },
     {
       "name": "open-grapher-page",
       "title": "Open Grapher Page",
       "description": "",
-      "mode": "view"
+      "mode": "view",
+      "icon": "open-grapher-page.png"
     }
   ],
   "dependencies": {
