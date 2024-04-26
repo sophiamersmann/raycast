@@ -3,6 +3,7 @@
   "name": "owid",
   "title": "OWID",
   "description": "",
+  "icon": "open-grapher-page.png",
   "author": "sophiamersmann",
   "license": "MIT",
   "commands": [
