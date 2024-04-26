@@ -1,7 +1,7 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "owid",
-  "title": "OWID",
+  "title": "Our World in Data",
   "description": "",
   "icon": "open-grapher-page.png",
   "author": "sophiamersmann",
