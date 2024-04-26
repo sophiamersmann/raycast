@@ -2,22 +2,22 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "owid",
   "title": "Our World in Data",
-  "description": "",
-  "icon": "open-grapher-page.png",
+  "description": "Quicklinks to Our World in Data's staging sites and Grapher pages",
+  "icon": "owid.png",
   "author": "sophiamersmann",
   "license": "MIT",
   "commands": [
     {
       "name": "open-staging-site",
       "title": "Open Staging Site",
-      "description": "",
+      "description": "Search through currently active staging sites",
       "mode": "view",
       "icon": "open-staging-site.png"
     },
     {
       "name": "open-grapher-page",
       "title": "Open Grapher Page",
-      "description": "",
+      "description": "Open clipboard text as Grapher page in various environments",
       "mode": "view",
       "icon": "open-grapher-page.png"
     }
