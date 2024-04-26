@@ -41,8 +41,7 @@ export default function Command() {
 
   const cleanText = clipboardText.trim();
   const isSlug = cleanText.match(SLUG_REGEX) !== null;
-  const grapherUrlMatch = cleanText.match(GRAPHER_URL_REGEX);
-  const grapherUrlSlug = grapherUrlMatch?.groups?.slug;
+  const grapherUrlSlug = cleanText.match(GRAPHER_URL_REGEX)?.groups?.slug;
   const slug = grapherUrlSlug ?? (isSlug ? cleanText : DEFAULT_SLUG);
 
   const liveUrl = makeGrapherURL(LIVE_URL, slug);
