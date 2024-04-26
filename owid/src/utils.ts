@@ -28,6 +28,26 @@ export function usePullRequests(repo: string, userName: string) {
   return { pullRequests, isLoading };
 }
 
+export function isValidSlug(text: string) {
+  // grab a part of the given text that looks like a slug
+  const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/gm;
+  const maybeSlug = text.match(slugRegex)?.groups?.maybeSlug ?? "";
+
+  const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
+  const { data, isLoading } = useFetch<{
+    ok: boolean;
+    rows: [[number]];
+  }>(
+    DATASETTE_API_URL +
+      `?sql=select+count(*)+from+charts+where+slug+%3D+'${maybeSlug}'`,
+  );
+
+  return {
+    isValid: Boolean(data && data.ok && data.rows[0][0] > 0),
+    isLoading,
+  };
+}
+
 export function makeGrapherURL(baseUrl: string, slug: string) {
   const baseUrlWithoutTrailingSlash = baseUrl.replace(/\/$/, "");
   return `${baseUrlWithoutTrailingSlash}/grapher/${slug}`;
