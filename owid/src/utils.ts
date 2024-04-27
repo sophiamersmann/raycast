@@ -30,7 +30,7 @@ export function usePullRequests(repo: string, userName: string) {
 
 export function isValidSlug(text: string) {
   // grab a part of the given text that looks like a slug
-  const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/gm;
+  const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/m;
   const maybeSlug = text.match(slugRegex)?.groups?.maybeSlug ?? "";
 
   const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";

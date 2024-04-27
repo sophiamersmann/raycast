@@ -29,7 +29,7 @@ const LOCAL_URL = "http://localhost:3030";
 
 const DEFAULT_SLUG = "life-expectancy";
 
-const GRAPHER_URL_REGEX = /^https?:\/\/.+\/grapher\/(?<slug>.+)$/gm;
+const GRAPHER_URL_REGEX = /^https?:\/\/.+\/grapher\/(?<slug>.+)$/m;
 
 export default function Command() {
   const { data: clipboardText = "", isLoading: isLoadingClipboardText } =
