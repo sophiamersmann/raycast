@@ -83,12 +83,12 @@ export default function Command() {
         icon={linkIcon}
         actions={<LinkActionPanel baseUrl={LOCAL_URL} slug={slug} />}
       />
-      <List.Section title="Staging">
+      <List.Section key="Staging" title="Staging">
         {pullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
             title={makeGrapherURL(pr.staging, slug)}
-            accessories={[{ text: "Staging" }]}
+            accessories={[{ date: pr.updatedAt }]}
             icon={linkIcon}
             actions={<LinkActionPanel baseUrl={pr.staging} slug={slug} />}
           />
