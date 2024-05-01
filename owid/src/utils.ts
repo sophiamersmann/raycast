@@ -28,7 +28,7 @@ export function usePullRequests(repo: string, userName: string) {
   return { pullRequests, isLoading };
 }
 
-export function isValidSlug(text: string) {
+export function fetchSlugFromText(text: string) {
   // grab a part of the given text that looks like a slug
   const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/m;
   const maybeSlug = text.match(slugRegex)?.groups?.maybeSlug ?? "";
@@ -36,14 +36,39 @@ export function isValidSlug(text: string) {
   const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
   const { data, isLoading } = useFetch<{
     ok: boolean;
-    rows: [[number]];
+    rows: [string][];
   }>(
     DATASETTE_API_URL +
-      `?sql=select+count(*)+from+charts+where+slug+%3D+'${maybeSlug}'`,
+      `?sql=select+slug+from+charts+where+slug+%3D+'${maybeSlug}'`,
   );
 
+  if (!data || !data.ok) return { isLoading };
+
+  const firstRow = data.rows[0];
+
+  if (!firstRow) return { isLoading };
+
   return {
-    isValid: Boolean(data && data.ok && data.rows[0][0] > 0),
+    slug: firstRow[0],
+    isLoading,
+  };
+}
+
+export function fetchChartId(slug: string) {
+  const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
+  const { data, isLoading } = useFetch<{
+    ok: boolean;
+    rows: [number][];
+  }>(DATASETTE_API_URL + `?sql=select+id+from+charts+where+slug+%3D+'${slug}'`);
+
+  if (!data || !data.ok) return { isLoading };
+
+  const firstRow = data.rows[0];
+
+  if (!firstRow) return { isLoading };
+
+  return {
+    chartId: firstRow[0],
     isLoading,
   };
 }

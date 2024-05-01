@@ -13,7 +13,8 @@ import {
   makeGrapherURL,
   usePullRequests,
   linkIcon,
-  isValidSlug,
+  fetchSlugFromText,
+  fetchChartId,
 } from "./utils";
 
 const GITHUB_REPO = "owid/owid-grapher";
@@ -26,6 +27,8 @@ const ARC_PATH = "/Applications/Arc.app";
 
 const LIVE_URL = "https://ourworldindata.org";
 const LOCAL_URL = "http://localhost:3030";
+
+const LIVE_ADMIN_URL = "https://admin.owid.io";
 
 const DEFAULT_SLUG = "life-expectancy";
 
@@ -58,21 +61,20 @@ export default function Command() {
     maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX)?.groups;
 
   // check if the clipboard content is a valid slug associated with a chart
-  const { isValid, isLoading: isWaitingForSlugValidation } =
-    isValidSlug(maybeSlugOrUrl);
+  const { slug: slugFromText, isLoading: isWaitingForSlug } =
+    fetchSlugFromText(maybeSlugOrUrl);
 
-  // use the default slug if no valid slug was found
   const slug =
-    fromGrapherUrl?.slug ??
-    fromFilename?.slug ??
-    (isValid ? maybeSlugOrUrl : DEFAULT_SLUG);
-
+    fromGrapherUrl?.slug ?? fromFilename?.slug ?? slugFromText ?? DEFAULT_SLUG;
   const queryParams = fromGrapherUrl?.queryParams ?? fromFilename?.queryParams;
+
+  const { chartId, isLoading: isLoadingChartId } = fetchChartId(slug);
 
   const isLoading =
     isLoadingClipboardText ||
     isLoadingPullRequests ||
-    isWaitingForSlugValidation;
+    isWaitingForSlug ||
+    isLoadingChartId;
 
   if (!isLoading && slug === DEFAULT_SLUG && maybeSlugOrUrl !== DEFAULT_SLUG) {
     showToast(
@@ -93,6 +95,7 @@ export default function Command() {
             baseUrl={LIVE_URL}
             slug={slug}
             queryParams={queryParams}
+            chartId={chartId}
           />
         }
       />
@@ -106,6 +109,7 @@ export default function Command() {
             baseUrl={LOCAL_URL}
             slug={slug}
             queryParams={queryParams}
+            chartId={chartId}
           />
         }
       />
@@ -121,6 +125,7 @@ export default function Command() {
                 baseUrl={pr.staging}
                 slug={slug}
                 queryParams={queryParams}
+                chartId={chartId}
               />
             }
           />
@@ -133,13 +138,22 @@ export default function Command() {
 function LinkActionPanel({
   baseUrl,
   slug,
+  chartId,
   queryParams,
 }: {
   baseUrl: string;
   slug: string;
+  chartId?: number;
   queryParams?: string;
 }) {
   const url = makeGrapherURL(baseUrl, slug, queryParams);
+
+  let chartEditorUrl = "";
+  if (chartId) {
+    const editorBaseUrl = baseUrl === LIVE_URL ? LIVE_ADMIN_URL : baseUrl;
+    chartEditorUrl = `${editorBaseUrl}/admin/charts/${chartId}/edit`;
+  }
+
   return (
     <ActionPanel>
       <Action
@@ -152,14 +166,14 @@ function LinkActionPanel({
         icon={Icon.Globe}
         onAction={() => open(url, ARC_PATH)}
       />
-      <Action.CopyToClipboard title="Copy Link" content={url} />
       <Action
-        title={`Open Life Expectancy in ${BROWSER_NAME}`}
-        icon={Icon.Globe}
+        title="Open Chart Editor"
+        icon={Icon.Pencil}
         onAction={() =>
-          open(makeGrapherURL(baseUrl, DEFAULT_SLUG, queryParams), BROWSER_PATH)
+          open(chartEditorUrl, baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH)
         }
       />
+      <Action.CopyToClipboard title="Copy Link" content={url} />
     </ActionPanel>
   );
 }
