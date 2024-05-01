@@ -29,7 +29,11 @@ const LOCAL_URL = "http://localhost:3030";
 
 const DEFAULT_SLUG = "life-expectancy";
 
-const GRAPHER_URL_REGEX = /^https?:\/\/.+\/grapher\/(?<slug>.+)$/m;
+const GRAPHER_URL_REGEX =
+  /^https?:\/\/.+\/grapher\/(?<slug>.+)\?(?<queryParams>.+)$/m;
+const TEST_SVG_FILENAME_REGEX = /^svg\/(?<slug>.+)_v\d+.+$/m;
+const TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS =
+  /^all-views\/svg\/(?<slug>.+)\?(?<queryParams>.+)_v\d+.+$/m;
 
 export default function Command() {
   const { data: clipboardText = "", isLoading: isLoadingClipboardText } =
@@ -46,14 +50,24 @@ export default function Command() {
   const maybeSlugOrUrl = clipboardText.trim();
 
   // check if the clipboard content is a grapher URL and if so grab its slug
-  const grapherUrlSlug = maybeSlugOrUrl.match(GRAPHER_URL_REGEX)?.groups?.slug;
+  const fromGrapherUrl = maybeSlugOrUrl.match(GRAPHER_URL_REGEX)?.groups;
+
+  // check if the clipboard content is a filename from the owid-grapher-svgs repo
+  const fromFilename =
+    maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS)?.groups ??
+    maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX)?.groups;
 
   // check if the clipboard content is a valid slug associated with a chart
   const { isValid, isLoading: isWaitingForSlugValidation } =
     isValidSlug(maybeSlugOrUrl);
 
   // use the default slug if no valid slug was found
-  const slug = grapherUrlSlug ?? (isValid ? maybeSlugOrUrl : DEFAULT_SLUG);
+  const slug =
+    fromGrapherUrl?.slug ??
+    fromFilename?.slug ??
+    (isValid ? maybeSlugOrUrl : DEFAULT_SLUG);
+
+  const queryParams = fromGrapherUrl?.queryParams ?? fromFilename?.queryParams;
 
   const isLoading =
     isLoadingClipboardText ||
@@ -71,26 +85,44 @@ export default function Command() {
     <List isLoading={isLoading}>
       <List.Item
         key="prod"
-        title={makeGrapherURL(LIVE_URL, slug)}
+        title={makeGrapherURL(LIVE_URL, slug, queryParams)}
         accessories={[{ text: "Live" }]}
         icon={linkIcon}
-        actions={<LinkActionPanel baseUrl={LIVE_URL} slug={slug} />}
+        actions={
+          <LinkActionPanel
+            baseUrl={LIVE_URL}
+            slug={slug}
+            queryParams={queryParams}
+          />
+        }
       />
       <List.Item
         key="local"
-        title={makeGrapherURL(LOCAL_URL, slug)}
+        title={makeGrapherURL(LOCAL_URL, slug, queryParams)}
         accessories={[{ text: "Local" }]}
         icon={linkIcon}
-        actions={<LinkActionPanel baseUrl={LOCAL_URL} slug={slug} />}
+        actions={
+          <LinkActionPanel
+            baseUrl={LOCAL_URL}
+            slug={slug}
+            queryParams={queryParams}
+          />
+        }
       />
       <List.Section key="Staging" title="Staging">
         {pullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
-            title={makeGrapherURL(pr.staging, slug)}
+            title={makeGrapherURL(pr.staging, slug, queryParams)}
             accessories={[{ date: pr.updatedAt }]}
             icon={linkIcon}
-            actions={<LinkActionPanel baseUrl={pr.staging} slug={slug} />}
+            actions={
+              <LinkActionPanel
+                baseUrl={pr.staging}
+                slug={slug}
+                queryParams={queryParams}
+              />
+            }
           />
         ))}
       </List.Section>
@@ -98,8 +130,16 @@ export default function Command() {
   );
 }
 
-function LinkActionPanel({ baseUrl, slug }: { baseUrl: string; slug: string }) {
-  const url = makeGrapherURL(baseUrl, slug);
+function LinkActionPanel({
+  baseUrl,
+  slug,
+  queryParams,
+}: {
+  baseUrl: string;
+  slug: string;
+  queryParams?: string;
+}) {
+  const url = makeGrapherURL(baseUrl, slug, queryParams);
   return (
     <ActionPanel>
       <Action
@@ -117,7 +157,7 @@ function LinkActionPanel({ baseUrl, slug }: { baseUrl: string; slug: string }) {
         title={`Open Life Expectancy in ${BROWSER_NAME}`}
         icon={Icon.Globe}
         onAction={() =>
-          open(makeGrapherURL(baseUrl, DEFAULT_SLUG), BROWSER_PATH)
+          open(makeGrapherURL(baseUrl, DEFAULT_SLUG, queryParams), BROWSER_PATH)
         }
       />
     </ActionPanel>

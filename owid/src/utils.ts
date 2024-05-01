@@ -48,9 +48,17 @@ export function isValidSlug(text: string) {
   };
 }
 
-export function makeGrapherURL(baseUrl: string, slug: string) {
+export function makeGrapherURL(
+  baseUrl: string,
+  slug: string,
+  queryParams?: string,
+) {
   const baseUrlWithoutTrailingSlash = baseUrl.replace(/\/$/, "");
-  return `${baseUrlWithoutTrailingSlash}/grapher/${slug}`;
+  let url = `${baseUrlWithoutTrailingSlash}/grapher/${slug}`;
+  if (queryParams) {
+    url += `?${queryParams}`;
+  }
+  return url;
 }
 
 export const linkIcon = {
