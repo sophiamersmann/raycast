@@ -31,7 +31,10 @@ export function usePullRequests(repo: string, userName: string) {
 export function fetchSlugFromText(text: string) {
   // grab a part of the given text that looks like a slug
   const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/m;
-  const maybeSlug = text.match(slugRegex)?.groups?.maybeSlug ?? "";
+  const slugWithQueryParamsRegex =
+    /^(?<maybeSlug>[a-z][a-z0-9-]+)\??(?<queryParams>[a-zA-Z0-9-=&~%+]*).*$/m;
+  const match = text.match(slugWithQueryParamsRegex) ?? text.match(slugRegex);
+  const maybeSlug = match?.groups?.maybeSlug ?? "";
 
   const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
   const { data, isLoading } = useFetch<{
@@ -50,6 +53,7 @@ export function fetchSlugFromText(text: string) {
 
   return {
     slug: firstRow[0],
+    queryParams: match?.groups?.queryParams,
     isLoading,
   };
 }

@@ -61,12 +61,18 @@ export default function Command() {
     maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX)?.groups;
 
   // check if the clipboard content is a valid slug associated with a chart
-  const { slug: slugFromText, isLoading: isWaitingForSlug } =
-    fetchSlugFromText(maybeSlugOrUrl);
+  const {
+    slug: slugFromText,
+    queryParams: queryParamsFromText,
+    isLoading: isWaitingForSlug,
+  } = fetchSlugFromText(maybeSlugOrUrl);
 
   const slug =
     fromGrapherUrl?.slug ?? fromFilename?.slug ?? slugFromText ?? DEFAULT_SLUG;
-  const queryParams = fromGrapherUrl?.queryParams ?? fromFilename?.queryParams;
+  const queryParams =
+    fromGrapherUrl?.queryParams ??
+    fromFilename?.queryParams ??
+    queryParamsFromText;
 
   const { chartId, isLoading: isLoadingChartId } = fetchChartId(slug);
 
