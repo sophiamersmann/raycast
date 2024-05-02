@@ -7,6 +7,7 @@ import {
   Icon,
   showToast,
   open,
+  Keyboard,
 } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import {
@@ -179,7 +180,11 @@ function LinkActionPanel({
           open(chartEditorUrl, baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH)
         }
       />
-      <Action.CopyToClipboard title="Copy Link" content={url} />
+      <Action.CopyToClipboard
+        title="Copy Link"
+        content={url}
+        shortcut={Keyboard.Shortcut.Common.Copy}
+      />
     </ActionPanel>
   );
 }

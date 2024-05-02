@@ -1,4 +1,4 @@
-import { List, ActionPanel, Action, Icon, open } from "@raycast/api";
+import { List, ActionPanel, Action, Icon, open, Keyboard } from "@raycast/api";
 import { usePullRequests, makeGrapherURL, linkIcon } from "./utils";
 
 const GITHUB_REPO = "owid/owid-grapher";
@@ -28,16 +28,6 @@ export default function Command() {
           actions={
             <ActionPanel>
               <Action
-                title={`Open Chart in ${BROWSER_NAME}`}
-                icon={Icon.LineChart}
-                onAction={() =>
-                  open(
-                    makeGrapherURL(pr.staging, EXAMPLE_CHART_SLUG),
-                    BROWSER_PATH,
-                  )
-                }
-              />
-              <Action
                 title={`Open in ${BROWSER_NAME}`}
                 icon={Icon.Globe}
                 onAction={() => open(pr.staging, BROWSER_PATH)}
@@ -47,10 +37,10 @@ export default function Command() {
                 icon={Icon.Globe}
                 onAction={() => open(pr.staging, ARC_PATH)}
               />
-              <Action.CopyToClipboard title="Copy Link" content={pr.staging} />
               <Action.CopyToClipboard
-                title="Copy Chart Link"
-                content={makeGrapherURL(pr.staging, EXAMPLE_CHART_SLUG)}
+                title="Copy Link"
+                content={pr.staging}
+                shortcut={Keyboard.Shortcut.Common.Copy}
               />
             </ActionPanel>
           }
