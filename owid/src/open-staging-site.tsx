@@ -15,7 +15,7 @@ import { usePromise } from "@raycast/utils";
 const GITHUB_REPO = "owid/owid-grapher";
 const GITHUB_USER_NAME = "sophiamersmann";
 
-const BROWSER_PATH = "/Applications/Google Chrome.app";
+const BROWSER_PATH = "/Applications/Google Chrome Dev.app";
 const BROWSER_NAME = "Google Chrome";
 
 const ARC_PATH = "/Applications/Arc.app";
