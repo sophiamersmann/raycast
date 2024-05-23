@@ -8,18 +8,11 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "open-staging-site",
-      "title": "Open Staging Site",
-      "description": "Search through currently active staging sites",
+      "name": "open-owid-page",
+      "title": "Open OWID Page",
+      "description": "Open clipboard text as OWID page in various environments",
       "mode": "view",
-      "icon": "open-staging-site.png"
-    },
-    {
-      "name": "open-grapher-page",
-      "title": "Open Grapher Page",
-      "description": "Open clipboard text as Grapher page in various environments",
-      "mode": "view",
-      "icon": "open-grapher-page.png"
+      "icon": "owid.png"
     }
   ],
   "dependencies": {

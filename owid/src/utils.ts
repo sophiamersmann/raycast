@@ -1,6 +1,8 @@
 import { Icon, Color } from "@raycast/api";
 import { useFetch } from "@raycast/utils";
 
+const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
+
 type PullRequest = {
   head: {
     ref: string;
@@ -28,21 +30,12 @@ export function usePullRequests(repo: string, userName: string) {
   return { pullRequests, isLoading };
 }
 
-export function fetchSlugFromText(text: string) {
-  // grab a part of the given text that looks like a slug
-  const slugRegex = /^(?<maybeSlug>[a-z][a-z0-9-]+).*$/m;
-  const slugWithQueryParamsRegex =
-    /^(?<maybeSlug>[a-z][a-z0-9-]+)\??(?<queryParams>[a-zA-Z0-9-=&~%+]*).*$/m;
-  const match = text.match(slugWithQueryParamsRegex) ?? text.match(slugRegex);
-  const maybeSlug = match?.groups?.maybeSlug ?? "";
-
-  const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
+export function validateSlug(text: string) {
   const { data, isLoading } = useFetch<{
     ok: boolean;
     rows: [string][];
   }>(
-    DATASETTE_API_URL +
-      `?sql=select+slug+from+charts+where+slug+%3D+'${maybeSlug}'`,
+    DATASETTE_API_URL + `?sql=select+slug+from+charts+where+slug+%3D+'${text}'`,
   );
 
   if (!data || !data.ok) return { isLoading };
@@ -53,7 +46,27 @@ export function fetchSlugFromText(text: string) {
 
   return {
     slug: firstRow[0],
-    queryParams: match?.groups?.queryParams,
+    isLoading,
+  };
+}
+
+export function fetchRandomSlug() {
+  const { data, isLoading } = useFetch<{
+    ok: boolean;
+    rows: [string][];
+  }>(
+    DATASETTE_API_URL +
+      `?sql=select+slug+from+charts+order+by+random%28%29+limit+1`,
+  );
+
+  if (!data || !data.ok) return { isLoading };
+
+  const firstRow = data.rows[0];
+
+  if (!firstRow) return { isLoading };
+
+  return {
+    slug: firstRow[0],
     isLoading,
   };
 }
@@ -77,17 +90,25 @@ export function fetchChartId(slug: string) {
   };
 }
 
-export function makeGrapherURL(
-  baseUrl: string,
-  slug: string,
-  queryParams?: string,
-) {
-  const baseUrlWithoutTrailingSlash = baseUrl.replace(/\/$/, "");
-  let url = `${baseUrlWithoutTrailingSlash}/grapher/${slug}`;
-  if (queryParams) {
-    url += `?${queryParams}`;
-  }
-  return url;
+export function fetchVariables(slug: string) {
+  const { data, isLoading } = useFetch<{
+    ok: boolean;
+    rows: [number, string, string | undefined][];
+  }>(
+    DATASETTE_API_URL +
+      `?sql=with+variableIds+as+%28%0D%0A++select%0D%0A++++c.id+as+chartId%2C%0D%0A++++d.value+-%3E%3E+%22%24.variableId%22+as+variableId%0D%0A++from%0D%0A++++charts+c%2C%0D%0A++++json_each%28config%2C+%27%24.dimensions%27%29+d%0D%0A++where%0D%0A++++c.slug+%3D+%27${slug}%27%0D%0A%29%0D%0Aselect%0D%0A++vid.variableId%2C%0D%0A++v.name%2C%0D%0A++v.display+-%3E%3E+%22%24.name%22+as+displayName%0D%0Afrom%0D%0A++variableIds+vid%0D%0A++join+variables+v+on+v.id+%3D+vid.variableId`,
+  );
+
+  if (!data || !data.ok || !data.rows || data.rows.length === 0)
+    return { variables: [], isLoading };
+
+  return {
+    variables: data.rows.map(([variableId, name, displayName]) => ({
+      id: variableId,
+      name: displayName || name,
+    })),
+    isLoading,
+  };
 }
 
 export const linkIcon = {
