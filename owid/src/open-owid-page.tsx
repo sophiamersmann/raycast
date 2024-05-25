@@ -75,7 +75,7 @@ export default function Command() {
     if (VALID_URLS.some((validUrl) => url.origin.startsWith(validUrl))) {
       content.origin = url.origin;
       content.pathname = url.pathname;
-      content.queryParams = url.search;
+      content.queryParams = url.search.slice(1);
     }
   } catch (error) {
     // intentionally empty
