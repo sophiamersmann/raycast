@@ -1,9 +1,18 @@
-import { Icon, Color } from "@raycast/api";
-import { useFetch } from "@raycast/utils";
+import { Icon, Color, showToast, Toast, Clipboard } from "@raycast/api";
+import { useFetch, usePromise } from "@raycast/utils";
 
 const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
 
-// TODO: See https://developers.raycast.com/utilities/react-hooks/usecachedpromise#mutation-and-optimistic-updates
+const CHART_TYPE_NAMES: Record<string, string> = {
+  LineChart: "Line Chart",
+  ScatterPlot: "Scatter Plot",
+  StackedArea: "Stacked Area Chart",
+  StackedBar: "Stacked Bar Chart",
+  DiscreteBar: "Discrete Bar Chart",
+  SlopeChart: "Slope Chart",
+  StackedDiscreteBar: "Stacked Discrete Bar Chart",
+  Marimekko: "Marimekko Chart",
+};
 
 type PullRequest = {
   head: {
@@ -15,12 +24,25 @@ type PullRequest = {
   updated_at: string;
 };
 
+export function useClipboard() {
+  const { data: clipboardText = "", isLoading } = usePromise(
+    Clipboard.readText,
+    [],
+    {
+      onError: async () => {
+        showToast(Toast.Style.Failure, "Failed to read clipboard content");
+      },
+    },
+  );
+  return { clipboardText, isLoading };
+}
+
 export function usePullRequests(repo: string, userName: string) {
   const GITHUB_API_URL = `https://api.github.com/repos/${repo}/pulls`;
 
-    const { data = [], isLoading } = useFetch<PullRequest[]>(
-      GITHUB_API_URL + "?per_page=100&sort=updated&direction=desc",
-    );
+  const { data = [], isLoading } = useFetch<PullRequest[]>(
+    GITHUB_API_URL + "?per_page=100&sort=updated&direction=desc",
+  );
 
   const pullRequests = data
     .filter((pr) => pr.user.login === userName)
@@ -33,108 +55,129 @@ export function usePullRequests(repo: string, userName: string) {
   return { pullRequests, isLoading };
 }
 
-export function validateSlug(text: string) {
+function fetchFromDatasette<TRow>(query: string) {
+  const searchParams = new URLSearchParams({ sql: query });
+  const datasetteUrl = `${DATASETTE_API_URL}?${searchParams}`;
+
   const { data, isLoading } = useFetch<{
     ok: boolean;
-    rows: [string, string][];
-  }>(
-    DATASETTE_API_URL +
-      `?sql=select+id,slug+from+charts+where+slug+%3D+'${encodeURIComponent(text)}'`,
-  );
+    rows: TRow[];
+  }>(datasetteUrl);
 
+  return { data, isLoading };
+}
+
+export function validateSlug(text: string) {
+  const query = `select slug from charts where slug = '${text}' limit 1`;
+  const { data, isLoading } = fetchFromDatasette<[string]>(query);
   if (!data || !data.ok) return { isLoading };
 
   const firstRow = data.rows[0];
-
   if (!firstRow) return { isLoading };
 
   return {
-    chartId: firstRow[0],
+    slug: firstRow[0],
+    isLoading,
+  };
+}
+
+export function fetchChart({
+  slug = "",
+  chartId = "",
+}: {
+  slug?: string;
+  chartId?: string;
+}) {
+  const whereClauses = [];
+  if (slug) whereClauses.push(`slug = '${slug}'`);
+  if (chartId) whereClauses.push(`id = ${chartId}`);
+  const query = `select id, slug from charts where ${whereClauses.join(" and ")} limit 1`;
+
+  const { data, isLoading } = fetchFromDatasette<[number, string]>(query);
+  if (!data || !data.ok) return { isLoading };
+
+  const firstRow = data.rows[0];
+  if (!firstRow) return { isLoading };
+
+  return {
+    chartId: firstRow[0].toString(),
     slug: firstRow[1],
     isLoading,
   };
 }
 
-export function fetchRandomSlug() {
-  const { data, isLoading } = useFetch<{
-    ok: boolean;
-    rows: [string][];
-  }>(
-    DATASETTE_API_URL +
-      `?sql=select+slug+from+charts+order+by+random%28%29+limit+1`,
-  );
-
-  if (!data || !data.ok) return { isLoading };
-
-  const firstRow = data.rows[0];
-
-  if (!firstRow) return { isLoading };
-
-  return {
-    slug: firstRow[0],
-    isLoading,
-  };
-}
-
-export function fetchChartId(slug: string) {
-  const { data, isLoading } = useFetch<{
-    ok: boolean;
-    rows: [number][];
-  }>(
-    DATASETTE_API_URL +
-      `?sql=select+id+from+charts+where+slug+%3D+'${encodeURIComponent(slug)}'`,
-  );
-
-  if (!data || !data.ok) return { isLoading };
-
-  const firstRow = data.rows[0];
-
-  if (!firstRow) return { isLoading };
+export function fetchRandomCharts() {
+  const query = `
+    select
+      slug,
+      type
+    from
+      charts
+    where
+      (
+        type = 'LineChart'
+        or type = 'StackedArea'
+        or type = 'StackedBar'
+        or type = 'ScatterPlot'
+        or type = 'DiscreteBar'
+        or type = 'SlopeChart'
+        or type = 'StackedDiscreteBar'
+        or type = 'Marimekko'
+      )
+      and configWithDefaults ->> "$.hasChartTab" is not false
+    group by
+      type
+    order by
+      random()
+    limit
+      8`;
+  const { data, isLoading } = fetchFromDatasette<[string, string]>(query);
+  if (!data || !data.ok || !data.rows || data.rows.length === 0)
+    return { charts: [], isLoading };
 
   return {
-    chartId: firstRow[0],
-    isLoading,
-  };
-}
-
-export function fetchSlug(chartId: string) {
-  const { data, isLoading } = useFetch<{
-    ok: boolean;
-    rows: [string][];
-  }>(
-    DATASETTE_API_URL +
-      `?sql=select+slug+from+charts+where+id+%3D+'${encodeURIComponent(chartId)}'`,
-  );
-
-  if (!data || !data.ok) return { isLoading };
-
-  const firstRow = data.rows[0];
-
-  if (!firstRow) return { isLoading };
-
-  return {
-    slug: firstRow[0],
+    charts: data.rows.map(([slug, type]) => ({
+      slug,
+      type,
+      name: CHART_TYPE_NAMES[type],
+    })),
     isLoading,
   };
 }
 
 export function fetchVariables(slug: string) {
-  const { data, isLoading } = useFetch<{
-    ok: boolean;
-    rows: [number, string, string | undefined][];
-  }>(
-    DATASETTE_API_URL +
-      `?sql=with+variableIds+as+%28%0D%0A++select%0D%0A++++c.id+as+chartId%2C%0D%0A++++d.value+-%3E%3E+%22%24.variableId%22+as+variableId%0D%0A++from%0D%0A++++charts+c%2C%0D%0A++++json_each%28config%2C+%27%24.dimensions%27%29+d%0D%0A++where%0D%0A++++c.slug+%3D+%27${encodeURIComponent(slug)}%27%0D%0A%29%0D%0Aselect%0D%0A++vid.variableId%2C%0D%0A++v.name%2C%0D%0A++v.display+-%3E%3E+%22%24.name%22+as+displayName%0D%0Afrom%0D%0A++variableIds+vid%0D%0A++join+variables+v+on+v.id+%3D+vid.variableId`,
-  );
+  const query = `
+    with variableIds as (
+      select
+        c.id as chartId,
+        d.value ->> "$.variableId" as variableId
+      from
+        charts c,
+        json_each(config, '$.dimensions') d
+      where
+        c.slug = '${slug}'
+    )
+    select
+      vid.variableId,
+      v.name,
+      v.display ->> "$.name" as displayName
+    from
+      variableIds vid
+      join variables v on v.id = vid.variableId`;
+
+  const { data, isLoading } =
+    fetchFromDatasette<[number, string, string]>(query);
 
   if (!data || !data.ok || !data.rows || data.rows.length === 0)
     return { variables: [], isLoading };
 
+  const variables = data.rows.map(([variableId, name, displayName]) => ({
+    id: variableId.toString(),
+    name: displayName || name,
+  }));
+
   return {
-    variables: data.rows.map(([variableId, name, displayName]) => ({
-      id: variableId,
-      name: displayName || name,
-    })),
+    variables,
     isLoading,
   };
 }

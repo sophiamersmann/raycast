@@ -1,32 +1,27 @@
+import { Action, ActionPanel, List, Icon, open, Keyboard } from "@raycast/api";
+import { useFrecencySorting } from "@raycast/utils";
 import {
-  Action,
-  ActionPanel,
-  Clipboard,
-  List,
-  Toast,
-  Icon,
-  showToast,
-  open,
-  Keyboard,
-} from "@raycast/api";
-import { useFrecencySorting, usePromise } from "@raycast/utils";
-import {
+  useClipboard,
   usePullRequests,
   linkIcon,
   validateSlug,
-  fetchChartId,
-  fetchRandomSlug,
+  fetchRandomCharts,
   fetchVariables,
-  fetchSlug,
+  fetchChart,
 } from "./utils";
 
 interface Data {
   clipboardText?: string;
+
+  // url
   origin?: string;
   pathname?: string;
   queryParams?: string;
+
+  // chart
   slug?: string;
   chartId?: string;
+
   isAdminUrl?: boolean;
 }
 
@@ -49,23 +44,15 @@ const TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS =
   /^all-views\/svg\/(?<slug>.+)\?(?<queryParams>.+)_v\d+.+$/m;
 
 export default function Command() {
-  const { data: clipboardText = "", isLoading: isLoadingClipboardText } =
-    usePromise(Clipboard.readText, [], {
-      onError: async () => {
-        showToast(Toast.Style.Failure, "Failed to read clipboard content");
-      },
-    });
-
   // fetch pull requests and sort them by frecency
   const { pullRequests, isLoading: isLoadingPullRequests } = usePullRequests(
     GITHUB_REPO,
     GITHUB_USER_NAME,
   );
-  const { data: sortedPullRequests, visitItem } = useFrecencySorting(
-    pullRequests,
-    { key: (item) => item.branch },
-  );
+  const { data: sortedPullRequests, visitItem: visitStaging } =
+    useFrecencySorting(pullRequests, { key: (item) => item.branch });
 
+  const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
   const maybeSlugOrUrl = clipboardText.trim();
 
   const content: Data = {};
@@ -73,11 +60,16 @@ export default function Command() {
   // check if the clipboard content is an OWID URL
   try {
     const url = new URL(maybeSlugOrUrl);
-    if (
-      [LIVE_URL, LIVE_ADMIN_URL, LOCAL_URL, "http://staging-site-"].some(
-        (validUrl) => url.origin.startsWith(validUrl),
-      )
-    ) {
+    const owidUrls = [
+      LIVE_URL,
+      LIVE_ADMIN_URL,
+      LOCAL_URL,
+      "http://staging-site-",
+    ];
+    const isOwidUrl = owidUrls.some((validUrl) =>
+      url.origin.startsWith(validUrl),
+    );
+    if (isOwidUrl) {
       content.origin = url.origin;
       content.pathname = url.pathname;
       content.queryParams = url.search.slice(1);
@@ -87,20 +79,28 @@ export default function Command() {
   }
 
   if (content.pathname) {
+    // extract slug from grapher page url
     const isGrapherUrl = content.pathname.startsWith("/grapher/");
     if (isGrapherUrl) {
       content.slug = content.pathname.match(
         /^\/grapher\/(?<slug>.+)/m,
       )?.groups?.slug;
     }
-    if (content.pathname.startsWith("/admin")) content.isAdminUrl = true;
-    if (content.pathname.startsWith("/admin/charts"))
+
+    // check if the url is a admin url
+    if (content.pathname.startsWith("/admin")) {
+      content.isAdminUrl = true;
+    }
+
+    // extract chart id from chart edit page url
+    if (content.pathname.startsWith("/admin/charts")) {
       content.chartId = content.pathname.match(
         /^\/admin\/charts\/(?<chartId>\d+).*/m,
       )?.groups?.chartId;
+    }
   }
 
-  // check if the clipboard content is a filename from the owid-grapher-svgs repo
+  // check if the copied text is a filename from the owid-grapher-svgs repo
   const fromFilename =
     maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS)?.groups ??
     maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX)?.groups;
@@ -110,33 +110,32 @@ export default function Command() {
     content.queryParams = fromFilename.queryParams;
   }
 
-  // check if the clipboard content is a valid slug associated with a chart
-  const maybeUrlOrSlugSplitByQuestionMark = maybeSlugOrUrl.split("?");
-  const { slug: slugFromText, isLoading: isWaitingForSlug } = validateSlug(
-    maybeUrlOrSlugSplitByQuestionMark[0],
-  );
-  if (slugFromText) {
-    content.slug = slugFromText;
-    content.pathname = `/grapher/${slugFromText}`;
-    content.queryParams = maybeUrlOrSlugSplitByQuestionMark[1];
+  // check if the copied text is a valid slug associated with a chart
+  const [maybeSlug, maybeQueryParams] = maybeSlugOrUrl.split("?");
+  const validationResult = validateSlug(maybeSlug);
+  if (validationResult.slug) {
+    content.slug = validationResult.slug;
+    content.pathname = `/grapher/${validationResult.slug}`;
+    content.queryParams = maybeQueryParams;
   }
 
-  // grab chart id if we have a grapher page slug
-  const { chartId, isLoading: isLoadingChartId } = fetchChartId(
-    content.slug ?? "",
-  );
-  if (chartId) content.chartId = chartId.toString();
-
-  // grab slug if we have a chart id
-  const { slug, isLoading: isLoadingSlug } = fetchSlug(content.chartId ?? "");
+  // fetch chart info
+  const {
+    chartId,
+    slug,
+    isLoading: isLoadingChartInfo,
+  } = fetchChart({
+    slug: content.slug,
+    chartId: content.chartId,
+  });
+  if (chartId) content.chartId = chartId;
   if (slug) content.slug = slug;
 
   const isLoading =
     isLoadingClipboardText ||
     isLoadingPullRequests ||
-    isWaitingForSlug ||
-    isLoadingChartId ||
-    isLoadingSlug;
+    validationResult.isLoading ||
+    isLoadingChartInfo;
 
   const liveOriginUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
@@ -167,7 +166,7 @@ export default function Command() {
               <LinkActionPanel
                 baseUrl={pr.staging}
                 data={content}
-                updateFrecency={() => visitItem(pr)}
+                updateFrecency={() => visitStaging(pr)}
               />
             }
           />
@@ -186,13 +185,16 @@ function LinkActionPanel({
   data: Data;
   updateFrecency?: () => Promise<void>;
 }) {
-  const { slug: randomSlug, isLoading: isLoadingRandomSlug } =
-    fetchRandomSlug();
+  const url = makeUrl(baseUrl, data.pathname, data.queryParams);
+
+  const { charts: randomCharts, isLoading: isLoadingRandomCharts } =
+    fetchRandomCharts();
+  const randomSlug =
+    randomCharts[Math.floor(Math.random() * randomCharts.length)];
+
   const { variables, isLoading: isLoadingVariables } = fetchVariables(
     data.slug ?? "",
   );
-
-  const url = makeUrl(baseUrl, data.pathname, data.queryParams);
 
   let chartEditorUrl = "";
   if (!data.isAdminUrl && data.chartId) {
@@ -276,15 +278,17 @@ function LinkActionPanel({
       </ActionPanel.Section>
 
       <ActionPanel.Section title="More pages">
-        <Action
-          title="Open Life Expectancy Chart"
-          icon={Icon.LineChart}
-          onAction={() => {
-            open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
-            if (updateFrecency) updateFrecency();
-          }}
-        />
-        {!isLoadingRandomSlug && randomSlug && (
+        {data.pathname !== "/grapher/life-expectancy" && (
+          <Action
+            title="Open Life Expectancy Chart"
+            icon={Icon.LineChart}
+            onAction={() => {
+              open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
+              if (updateFrecency) updateFrecency();
+            }}
+          />
+        )}
+        {!isLoadingRandomCharts && randomSlug && (
           <Action
             title="Open Random Chart"
             icon={Icon.LineChart}
@@ -294,6 +298,20 @@ function LinkActionPanel({
             }}
           />
         )}
+        {!isLoadingRandomCharts &&
+          randomCharts.map((randomChart) => (
+            <Action
+              title={`Open Random ${randomChart.name}`}
+              icon={Icon.LineChart}
+              onAction={() => {
+                open(
+                  makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
+                  BROWSER_PATH,
+                );
+                if (updateFrecency) updateFrecency();
+              }}
+            />
+          ))}
       </ActionPanel.Section>
 
       {!isLoadingVariables && variables.length > 1 && (
