@@ -9,7 +9,7 @@ import {
   open,
   Keyboard,
 } from "@raycast/api";
-import { usePromise } from "@raycast/utils";
+import { useFrecencySorting, usePromise } from "@raycast/utils";
 import {
   usePullRequests,
   linkIcon,
@@ -17,6 +17,7 @@ import {
   fetchChartId,
   fetchRandomSlug,
   fetchVariables,
+  fetchSlug,
 } from "./utils";
 
 interface Data {
@@ -42,16 +43,10 @@ const LOCAL_URL = "http://localhost:3030";
 
 const LIVE_ADMIN_URL = "https://admin.owid.io";
 
+// matches filenames in the owid-grapher-svgs repo
 const TEST_SVG_FILENAME_REGEX = /^svg\/(?<slug>.+)_v\d+.+$/m;
 const TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS =
   /^all-views\/svg\/(?<slug>.+)\?(?<queryParams>.+)_v\d+.+$/m;
-
-const VALID_URLS = [
-  LIVE_URL,
-  LIVE_ADMIN_URL,
-  LOCAL_URL,
-  "http://staging-site-",
-];
 
 export default function Command() {
   const { data: clipboardText = "", isLoading: isLoadingClipboardText } =
@@ -60,9 +55,15 @@ export default function Command() {
         showToast(Toast.Style.Failure, "Failed to read clipboard content");
       },
     });
+
+  // fetch pull requests and sort them by frecency
   const { pullRequests, isLoading: isLoadingPullRequests } = usePullRequests(
     GITHUB_REPO,
     GITHUB_USER_NAME,
+  );
+  const { data: sortedPullRequests, visitItem } = useFrecencySorting(
+    pullRequests,
+    { key: (item) => item.branch },
   );
 
   const maybeSlugOrUrl = clipboardText.trim();
@@ -72,7 +73,11 @@ export default function Command() {
   // check if the clipboard content is an OWID URL
   try {
     const url = new URL(maybeSlugOrUrl);
-    if (VALID_URLS.some((validUrl) => url.origin.startsWith(validUrl))) {
+    if (
+      [LIVE_URL, LIVE_ADMIN_URL, LOCAL_URL, "http://staging-site-"].some(
+        (validUrl) => url.origin.startsWith(validUrl),
+      )
+    ) {
       content.origin = url.origin;
       content.pathname = url.pathname;
       content.queryParams = url.search.slice(1);
@@ -122,11 +127,16 @@ export default function Command() {
   );
   if (chartId) content.chartId = chartId.toString();
 
+  // grab slug if we have a chart id
+  const { slug, isLoading: isLoadingSlug } = fetchSlug(content.chartId ?? "");
+  if (slug) content.slug = slug;
+
   const isLoading =
     isLoadingClipboardText ||
     isLoadingPullRequests ||
     isWaitingForSlug ||
-    isLoadingChartId;
+    isLoadingChartId ||
+    isLoadingSlug;
 
   const liveOriginUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
@@ -147,13 +157,19 @@ export default function Command() {
         actions={<LinkActionPanel baseUrl={LOCAL_URL} data={content} />}
       />
       <List.Section key="Staging" title="Staging">
-        {pullRequests.map((pr) => (
+        {sortedPullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
             title={makeUrl(pr.staging, content.pathname, content.queryParams)}
             accessories={[{ date: pr.updatedAt }]}
             icon={linkIcon}
-            actions={<LinkActionPanel baseUrl={pr.staging} data={content} />}
+            actions={
+              <LinkActionPanel
+                baseUrl={pr.staging}
+                data={content}
+                updateFrecency={() => visitItem(pr)}
+              />
+            }
           />
         ))}
       </List.Section>
@@ -161,7 +177,21 @@ export default function Command() {
   );
 }
 
-function LinkActionPanel({ baseUrl, data }: { baseUrl: string; data: Data }) {
+function LinkActionPanel({
+  baseUrl,
+  data,
+  updateFrecency,
+}: {
+  baseUrl: string;
+  data: Data;
+  updateFrecency?: () => Promise<void>;
+}) {
+  const { slug: randomSlug, isLoading: isLoadingRandomSlug } =
+    fetchRandomSlug();
+  const { variables, isLoading: isLoadingVariables } = fetchVariables(
+    data.slug ?? "",
+  );
+
   const url = makeUrl(baseUrl, data.pathname, data.queryParams);
 
   let chartEditorUrl = "";
@@ -173,41 +203,60 @@ function LinkActionPanel({ baseUrl, data }: { baseUrl: string; data: Data }) {
     );
   }
 
-  const { slug: randomSlug, isLoading: isLoadingRandomSlug } =
-    fetchRandomSlug();
-
-  const { variables, isLoading: isLoadingVariables } = fetchVariables(
-    data.slug ?? "",
-  );
+  let grapherPageUrl = "";
+  if (data.isAdminUrl && data.slug) {
+    grapherPageUrl = makeUrl(baseUrl, `/grapher/${data.slug}`);
+  }
 
   return (
     <ActionPanel>
       <Action
         title={`Open in ${BROWSER_NAME}`}
         icon={Icon.Globe}
-        onAction={() => open(url, BROWSER_PATH)}
+        onAction={() => {
+          open(url, BROWSER_PATH);
+          if (updateFrecency) updateFrecency();
+        }}
       />
       <Action
         title="Open in Little Arc"
         icon={Icon.Globe}
-        onAction={() => open(url, ARC_PATH)}
+        onAction={() => {
+          open(url, ARC_PATH);
+          if (updateFrecency) updateFrecency();
+        }}
       />
       <Action.CopyToClipboard
         title="Copy Link"
         content={url}
         shortcut={Keyboard.Shortcut.Common.Copy}
+        onCopy={() => {
+          if (updateFrecency) updateFrecency();
+        }}
       />
+
       <ActionPanel.Section title="Related pages">
+        {grapherPageUrl && (
+          <Action
+            title="Open Grapher Page"
+            icon={Icon.LineChart}
+            onAction={() => {
+              open(grapherPageUrl, BROWSER_PATH);
+              if (updateFrecency) updateFrecency();
+            }}
+          />
+        )}
         {chartEditorUrl && (
           <Action
             title="Open Chart Editor"
             icon={Icon.Pencil}
-            onAction={() =>
+            onAction={() => {
               open(
                 chartEditorUrl,
                 baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
-              )
-            }
+              );
+              if (updateFrecency) updateFrecency();
+            }}
           />
         )}
         {!isLoadingVariables && variables.length === 1 && (
@@ -220,28 +269,33 @@ function LinkActionPanel({ baseUrl, data }: { baseUrl: string; data: Data }) {
                 `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                 BROWSER_PATH,
               );
+              if (updateFrecency) updateFrecency();
             }}
           />
         )}
       </ActionPanel.Section>
+
       <ActionPanel.Section title="More pages">
         <Action
           title="Open Life Expectancy Chart"
           icon={Icon.LineChart}
-          onAction={() =>
-            open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH)
-          }
+          onAction={() => {
+            open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
+            if (updateFrecency) updateFrecency();
+          }}
         />
         {!isLoadingRandomSlug && randomSlug && (
           <Action
             title="Open Random Chart"
             icon={Icon.LineChart}
-            onAction={() =>
-              open(makeUrl(baseUrl, `/grapher/${randomSlug}`), BROWSER_PATH)
-            }
+            onAction={() => {
+              open(makeUrl(baseUrl, `/grapher/${randomSlug}`), BROWSER_PATH);
+              if (updateFrecency) updateFrecency();
+            }}
           />
         )}
       </ActionPanel.Section>
+
       {!isLoadingVariables && variables.length > 1 && (
         <ActionPanel.Section title="Variables Metadata">
           {variables.map((variable) => (
@@ -254,6 +308,7 @@ function LinkActionPanel({ baseUrl, data }: { baseUrl: string; data: Data }) {
                   `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                   BROWSER_PATH,
                 );
+                if (updateFrecency) updateFrecency();
               }}
             />
           ))}
