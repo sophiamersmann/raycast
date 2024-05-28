@@ -104,12 +104,17 @@ export function fetchChart({
   slug?: string;
   chartId?: string;
 }) {
+  let query = "select id, slug from charts";
+
   const whereClauses = [];
   if (slug) whereClauses.push(`slug = '${slug}'`);
   if (chartId) whereClauses.push(`id = ${chartId}`);
-  const query = `select id, slug from charts where ${whereClauses.join(" and ")} limit 1`;
+
+  if (whereClauses.length > 0) query += ` where ${whereClauses.join(" and ")}`;
+  query += " limit 1";
 
   const { data, isLoading } = fetchFromDatasette<[number, string]>(query);
+  if (!slug && !chartId) return { isLoading }; // dismiss if no input params were given
   if (!data || !data.ok) return { isLoading };
 
   const firstRow = data.rows[0];
