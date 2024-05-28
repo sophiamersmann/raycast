@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import { Icon, showToast, Toast, Clipboard } from "@raycast/api";
 import { useFetch, usePromise } from "@raycast/utils";
 
@@ -71,8 +72,11 @@ export function usePullRequests(repo: string, userName: string) {
   return { pullRequests, isLoading };
 }
 
-function fetchFromDatasette<TRow>(query: string) {
-  const searchParams = new URLSearchParams({ sql: query });
+function fetchFromDatasette<TRow>(query: string, options?: { ttl?: number }) {
+  const queryParams: Record<string, string> = { sql: query };
+  if (options?.ttl !== undefined) queryParams._ttl = options.ttl.toString();
+
+  const searchParams = new URLSearchParams(queryParams);
   const datasetteUrl = `${DATASETTE_API_URL}?${searchParams}`;
 
   const { data, isLoading } = useFetch<{
@@ -129,30 +133,43 @@ export function fetchChart({
 
 export function fetchRandomCharts() {
   const query = `
+    with randomRows as (
+      select
+        slug,
+        type,
+        row_number() over (
+          partition by type
+          order by
+            random()
+        ) as rn
+      from
+        charts
+      where
+        type in (
+          'LineChart',
+          'StackedArea',
+          'StackedBar',
+          'ScatterPlot',
+          'DiscreteBar',
+          'SlopeChart',
+          'StackedDiscreteBar',
+          'Marimekko'
+        )
+        and json_extract(configWithDefaults, '$.hasChartTab') is not false
+    )
     select
       slug,
       type
     from
-      charts
+      randomRows
     where
-      (
-        type = 'LineChart'
-        or type = 'StackedArea'
-        or type = 'StackedBar'
-        or type = 'ScatterPlot'
-        or type = 'DiscreteBar'
-        or type = 'SlopeChart'
-        or type = 'StackedDiscreteBar'
-        or type = 'Marimekko'
-      )
-      and configWithDefaults ->> "$.hasChartTab" is not false
-    group by
-      type
-    order by
-      random()
+      rn = 1
     limit
       8`;
-  const { data, isLoading } = fetchFromDatasette<[string, string]>(query);
+
+  const { data, isLoading } = fetchFromDatasette<[string, string]>(query, {
+    ttl: 0,
+  });
   if (!data || !data.ok || !data.rows || data.rows.length === 0)
     return { charts: [], isLoading };
 

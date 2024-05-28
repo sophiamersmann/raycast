@@ -311,7 +311,10 @@ function LinkActionPanel({
             title="Open Random Chart"
             icon={Icon.LineChart}
             onAction={() => {
-              open(makeUrl(baseUrl, `/grapher/${randomChart}`), BROWSER_PATH);
+              open(
+                makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
+                BROWSER_PATH,
+              );
               if (updateFrecency) updateFrecency();
             }}
           />
