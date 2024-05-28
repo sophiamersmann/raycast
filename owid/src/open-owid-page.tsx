@@ -1,9 +1,16 @@
-import { Action, ActionPanel, List, Icon, open, Keyboard } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  List,
+  Icon,
+  open,
+  Keyboard,
+  Color,
+} from "@raycast/api";
 import { useFrecencySorting } from "@raycast/utils";
 import {
   useClipboard,
   usePullRequests,
-  linkIcon,
   validateSlug,
   fetchRandomCharts,
   fetchVariables,
@@ -54,13 +61,13 @@ export default function Command() {
     useFrecencySorting(pullRequests, { key: (item) => item.branch });
 
   const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
-  const maybeSlugOrUrl = clipboardText.trim();
+  const copiedText = clipboardText.trim();
 
   const content: Data = {};
 
   // check if the clipboard content is an OWID URL
   try {
-    const url = new URL(maybeSlugOrUrl);
+    const url = new URL(copiedText);
     const owidUrls = [
       LIVE_URL,
       LIVE_ADMIN_URL,
@@ -80,31 +87,26 @@ export default function Command() {
   }
 
   if (content.pathname) {
-    // extract slug from grapher page url
-    const isGrapherUrl = content.pathname.startsWith("/grapher/");
-    if (isGrapherUrl) {
-      content.slug = content.pathname.match(
-        /^\/grapher\/(?<slug>.+)/m,
-      )?.groups?.slug;
-    }
-
     // check if the url is a admin url
     if (content.pathname.startsWith("/admin")) {
       content.isAdminUrl = true;
     }
 
+    // extract slug from grapher page url
+    content.slug = content.pathname.match(
+      /^\/grapher\/(?<slug>.+)/m,
+    )?.groups?.slug;
+
     // extract chart id from chart edit page url
-    if (content.pathname.startsWith("/admin/charts")) {
-      content.chartId = content.pathname.match(
-        /^\/admin\/charts\/(?<chartId>\d+).*/m,
-      )?.groups?.chartId;
-    }
+    content.chartId = content.pathname.match(
+      /^\/admin\/charts\/(?<chartId>\d+).*/m,
+    )?.groups?.chartId;
   }
 
   // check if the copied text is a filename from the owid-grapher-svgs repo
   const fromFilename =
-    maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS)?.groups ??
-    maybeSlugOrUrl.match(TEST_SVG_FILENAME_REGEX)?.groups;
+    copiedText.match(TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS)?.groups ??
+    copiedText.match(TEST_SVG_FILENAME_REGEX)?.groups;
   if (fromFilename) {
     content.slug = fromFilename.slug;
     content.pathname = `/grapher/${fromFilename.slug}`;
@@ -112,7 +114,7 @@ export default function Command() {
   }
 
   // check if the copied text is a valid slug associated with a chart
-  const [maybeSlug, maybeQueryParams] = maybeSlugOrUrl.split("?");
+  const [maybeSlug, maybeQueryParams] = copiedText.split("?");
   const validationResult = validateSlug(maybeSlug);
   if (validationResult.slug) {
     content.slug = validationResult.slug;
@@ -143,20 +145,18 @@ export default function Command() {
   return (
     <List isLoading={isLoading}>
       <List.Item
-        key="prod"
         title={makeUrl(liveOriginUrl, content.pathname, content.queryParams)}
         accessories={[{ text: "Live" }]}
         icon={linkIcon}
         actions={<LinkActionPanel baseUrl={LIVE_URL} data={content} />}
       />
       <List.Item
-        key="local"
         title={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
         accessories={[{ text: "Local" }]}
         icon={linkIcon}
         actions={<LinkActionPanel baseUrl={LOCAL_URL} data={content} />}
       />
-      <List.Section key="Staging" title="Staging">
+      <List.Section title="Staging">
         {sortedPullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
@@ -193,26 +193,12 @@ function LinkActionPanel({
   const randomChartsByType = new Map(
     randomCharts.map((chart) => [chart.type, chart]),
   );
-  const randomSlug =
+  const randomChart =
     randomCharts[Math.floor(Math.random() * randomCharts.length)];
 
   const { variables, isLoading: isLoadingVariables } = fetchVariables(
     data.slug ?? "",
   );
-
-  let chartEditorUrl = "";
-  if (!data.isAdminUrl && data.chartId) {
-    const editorBaseUrl = baseUrl === LIVE_URL ? LIVE_ADMIN_URL : baseUrl;
-    chartEditorUrl = makeUrl(
-      editorBaseUrl,
-      `/admin/charts/${data.chartId}/edit`,
-    );
-  }
-
-  let grapherPageUrl = "";
-  if (data.isAdminUrl && data.slug) {
-    grapherPageUrl = makeUrl(baseUrl, `/grapher/${data.slug}`);
-  }
 
   return (
     <ActionPanel>
@@ -242,21 +228,28 @@ function LinkActionPanel({
       />
 
       <ActionPanel.Section title="Related pages">
-        {grapherPageUrl && (
+        {data.isAdminUrl && data.slug && (
           <Action
             title="Open Grapher Page"
             icon={Icon.LineChart}
             onAction={() => {
+              const grapherPageUrl = makeUrl(baseUrl, `/grapher/${data.slug}`);
               open(grapherPageUrl, BROWSER_PATH);
               if (updateFrecency) updateFrecency();
             }}
           />
         )}
-        {chartEditorUrl && (
+        {!data.isAdminUrl && data.chartId && (
           <Action
             title="Open Chart Editor"
             icon={Icon.Pencil}
             onAction={() => {
+              const editorBaseUrl =
+                baseUrl === LIVE_URL ? LIVE_ADMIN_URL : baseUrl;
+              const chartEditorUrl = makeUrl(
+                editorBaseUrl,
+                `/admin/charts/${data.chartId}/edit`,
+              );
               open(
                 chartEditorUrl,
                 baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
@@ -292,12 +285,12 @@ function LinkActionPanel({
             }}
           />
         )}
-        {!isLoadingRandomCharts && randomSlug && (
+        {!isLoadingRandomCharts && randomChart && (
           <Action
             title="Open Random Chart"
             icon={Icon.LineChart}
             onAction={() => {
-              open(makeUrl(baseUrl, `/grapher/${randomSlug}`), BROWSER_PATH);
+              open(makeUrl(baseUrl, `/grapher/${randomChart}`), BROWSER_PATH);
               if (updateFrecency) updateFrecency();
             }}
           />
@@ -351,4 +344,13 @@ function LinkActionPanel({
 
 const makeUrl = (origin: string, pathname?: string, queryParams?: string) => {
   return origin + (pathname ?? "") + (queryParams ? `?${queryParams}` : "");
+};
+
+const linkIcon = {
+  source: Icon.Link,
+  tintColor: {
+    light: Color.SecondaryText,
+    dark: Color.SecondaryText,
+    adjustContrast: true,
+  },
 };

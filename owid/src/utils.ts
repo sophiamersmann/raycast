@@ -1,4 +1,4 @@
-import { Icon, Color, showToast, Toast, Clipboard } from "@raycast/api";
+import { Icon, showToast, Toast, Clipboard } from "@raycast/api";
 import { useFetch, usePromise } from "@raycast/utils";
 
 const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
@@ -202,12 +202,3 @@ export function fetchVariables(slug: string) {
     isLoading,
   };
 }
-
-export const linkIcon = {
-  source: Icon.Link,
-  tintColor: {
-    light: Color.SecondaryText,
-    dark: Color.SecondaryText,
-    adjustContrast: true,
-  },
-};
