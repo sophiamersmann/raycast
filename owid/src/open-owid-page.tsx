@@ -311,6 +311,7 @@ function LinkActionPanel({
             if (!randomChart) return null;
             return (
               <Action
+                key={randomChart.slug}
                 title={`Open ${randomChart.name}`}
                 icon={randomChart.icon}
                 onAction={() => {
