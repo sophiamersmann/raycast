@@ -3,15 +3,31 @@ import { useFetch, usePromise } from "@raycast/utils";
 
 const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
 
-const CHART_TYPE_NAMES: Record<string, string> = {
-  LineChart: "Line Chart",
-  ScatterPlot: "Scatter Plot",
-  StackedArea: "Stacked Area Chart",
-  StackedBar: "Stacked Bar Chart",
-  DiscreteBar: "Discrete Bar Chart",
-  SlopeChart: "Slope Chart",
-  StackedDiscreteBar: "Stacked Discrete Bar Chart",
-  Marimekko: "Marimekko Chart",
+export const CHART_TYPES = [
+  "LineChart",
+  "ScatterPlot",
+  "DiscreteBar",
+  "StackedDiscreteBar",
+  "StackedBar",
+  "StackedArea",
+  "SlopeChart",
+  "Marimekko",
+] as const;
+
+type ChartType = (typeof CHART_TYPES)[number];
+
+const CHART_TYPE_DATA: Record<ChartType, { name: string; icon: Icon }> = {
+  LineChart: { name: "Line Chart", icon: Icon.LineChart },
+  ScatterPlot: { name: "Scatter Plot", icon: Icon.LineChart },
+  StackedArea: { name: "Stacked Area Chart", icon: Icon.BarChart },
+  StackedBar: { name: "Stacked Bar Chart", icon: Icon.BarChart },
+  DiscreteBar: { name: "Discrete Bar Chart", icon: Icon.BarChart },
+  SlopeChart: { name: "Slope Chart", icon: Icon.LineChart },
+  StackedDiscreteBar: {
+    name: "Stacked Discrete Bar Chart",
+    icon: Icon.BarChart,
+  },
+  Marimekko: { name: "Marimekko Chart", icon: Icon.BarChart },
 };
 
 type PullRequest = {
@@ -139,7 +155,7 @@ export function fetchRandomCharts() {
     charts: data.rows.map(([slug, type]) => ({
       slug,
       type,
-      name: CHART_TYPE_NAMES[type],
+      ...CHART_TYPE_DATA[type as ChartType],
     })),
     isLoading,
   };

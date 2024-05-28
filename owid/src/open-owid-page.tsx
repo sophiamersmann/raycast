@@ -8,6 +8,7 @@ import {
   fetchRandomCharts,
   fetchVariables,
   fetchChart,
+  CHART_TYPES,
 } from "./utils";
 
 interface Data {
@@ -189,6 +190,9 @@ function LinkActionPanel({
 
   const { charts: randomCharts, isLoading: isLoadingRandomCharts } =
     fetchRandomCharts();
+  const randomChartsByType = new Map(
+    randomCharts.map((chart) => [chart.type, chart]),
+  );
   const randomSlug =
     randomCharts[Math.floor(Math.random() * randomCharts.length)];
 
@@ -298,21 +302,29 @@ function LinkActionPanel({
             }}
           />
         )}
-        {!isLoadingRandomCharts &&
-          randomCharts.map((randomChart) => (
-            <Action
-              title={`Open Random ${randomChart.name}`}
-              icon={Icon.LineChart}
-              onAction={() => {
-                open(
-                  makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
-                  BROWSER_PATH,
-                );
-                if (updateFrecency) updateFrecency();
-              }}
-            />
-          ))}
       </ActionPanel.Section>
+
+      {!isLoadingRandomCharts && randomCharts.length > 0 && (
+        <ActionPanel.Section title="More Random Charts">
+          {CHART_TYPES.map((chartType) => {
+            const randomChart = randomChartsByType.get(chartType);
+            if (!randomChart) return null;
+            return (
+              <Action
+                title={`Open ${randomChart.name}`}
+                icon={randomChart.icon}
+                onAction={() => {
+                  open(
+                    makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
+                    BROWSER_PATH,
+                  );
+                  if (updateFrecency) updateFrecency();
+                }}
+              />
+            );
+          })}
+        </ActionPanel.Section>
+      )}
 
       {!isLoadingVariables && variables.length > 1 && (
         <ActionPanel.Section title="Variables Metadata">
