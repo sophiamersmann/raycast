@@ -227,7 +227,7 @@ function LinkActionPanel({
         }}
       />
 
-      <ActionPanel.Section title="Related pages">
+      <ActionPanel.Section title="Related Pages">
         {data.isAdminUrl && data.slug && (
           <Action
             title="Open Grapher Page"
@@ -274,7 +274,28 @@ function LinkActionPanel({
         )}
       </ActionPanel.Section>
 
-      <ActionPanel.Section title="More pages">
+      {!isLoadingVariables && variables.length > 1 && (
+        <ActionPanel.Section title="Variables Metadata">
+          {variables.map((variable) => (
+            <Action
+              key={variable.id}
+              title={variable.name}
+              icon={Icon.Receipt}
+              onAction={() => {
+                open(
+                  `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
+                  BROWSER_PATH,
+                );
+                if (updateFrecency) updateFrecency();
+              }}
+            />
+          ))}
+        </ActionPanel.Section>
+      )}
+
+      <ActionPanel.Section
+        title={data.slug || data.chartId ? "More Pages" : undefined}
+      >
         {data.pathname !== "/grapher/life-expectancy" && (
           <Action
             title="Open Life Expectancy Chart"
@@ -317,25 +338,6 @@ function LinkActionPanel({
               />
             );
           })}
-        </ActionPanel.Section>
-      )}
-
-      {!isLoadingVariables && variables.length > 1 && (
-        <ActionPanel.Section title="Variables Metadata">
-          {variables.map((variable) => (
-            <Action
-              key={variable.id}
-              title={variable.name}
-              icon={Icon.Receipt}
-              onAction={() => {
-                open(
-                  `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
-                  BROWSER_PATH,
-                );
-                if (updateFrecency) updateFrecency();
-              }}
-            />
-          ))}
         </ActionPanel.Section>
       )}
     </ActionPanel>
