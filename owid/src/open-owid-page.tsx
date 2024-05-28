@@ -226,6 +226,24 @@ function LinkActionPanel({
           if (updateFrecency) updateFrecency();
         }}
       />
+      {data.slug && (
+        <Action.CopyToClipboard
+          title="Copy Slug"
+          content={data.slug}
+          onCopy={() => {
+            if (updateFrecency) updateFrecency();
+          }}
+        />
+      )}
+      {data.chartId && (
+        <Action.CopyToClipboard
+          title="Copy Chart ID"
+          content={data.chartId}
+          onCopy={() => {
+            if (updateFrecency) updateFrecency();
+          }}
+        />
+      )}
 
       <ActionPanel.Section title="Related Pages">
         {data.isAdminUrl && data.slug && (

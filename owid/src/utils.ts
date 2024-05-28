@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { Icon, showToast, Toast, Clipboard } from "@raycast/api";
 import { useFetch, usePromise } from "@raycast/utils";
 
