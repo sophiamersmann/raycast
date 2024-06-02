@@ -146,7 +146,7 @@ export default function Command() {
     validationResult.isLoading ||
     isLoadingChartInfo;
 
-  const liveOriginUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
+  const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
   const detail = content.chartConfig
     ? makeDetails(content.chartConfig)
@@ -161,12 +161,17 @@ export default function Command() {
   return (
     <List isLoading={isLoading} isShowingDetail={!!detail && isShowingDetail}>
       <List.Item
-        title={makeUrl(liveOriginUrl, content.pathname, content.queryParams)}
+        title={makeUrl(liveUrl, content.pathname, content.queryParams)}
         icon={linkIcon}
         accessories={[{ text: "Live" }]}
         detail={<List.Item.Detail markdown={detail} />}
         actions={
-          <LinkActionPanel baseUrl={LIVE_URL} data={content} {...detailProps} />
+          <LinkActionPanel
+            baseUrl={LIVE_URL}
+            baseAdminUrl={LIVE_ADMIN_URL}
+            data={content}
+            {...detailProps}
+          />
         }
       />
       <List.Item
@@ -177,6 +182,7 @@ export default function Command() {
         actions={
           <LinkActionPanel
             baseUrl={LOCAL_URL}
+            baseAdminUrl={LOCAL_URL}
             data={content}
             {...detailProps}
           />
@@ -193,6 +199,7 @@ export default function Command() {
             actions={
               <LinkActionPanel
                 baseUrl={pr.staging}
+                baseAdminUrl={pr.staging}
                 data={content}
                 {...detailProps}
                 updateFrecency={() => visitStaging(pr)}
@@ -207,6 +214,7 @@ export default function Command() {
 
 function LinkActionPanel({
   baseUrl,
+  baseAdminUrl,
   data,
   hasDetail,
   isShowingDetail,
@@ -214,13 +222,18 @@ function LinkActionPanel({
   updateFrecency,
 }: {
   baseUrl: string;
+  baseAdminUrl: string;
   data: Data;
   hasDetail: boolean;
   isShowingDetail: boolean;
   setIsShowingDetail: (value: boolean) => void;
   updateFrecency?: () => Promise<void>;
 }) {
-  const url = makeUrl(baseUrl, data.pathname, data.queryParams);
+  const url = makeUrl(
+    data.isAdminUrl ? baseAdminUrl : baseUrl,
+    data.pathname,
+    data.queryParams,
+  );
 
   const { charts: randomCharts, isLoading: isLoadingRandomCharts } =
     fetchRandomCharts();
@@ -234,24 +247,32 @@ function LinkActionPanel({
     data.chartSlug ?? "",
   );
 
+  const OpenInBrowserAction = (
+    <Action
+      title={`Open in ${BROWSER_NAME}`}
+      icon={Icon.Globe}
+      onAction={() => {
+        open(url, BROWSER_PATH);
+        if (updateFrecency) updateFrecency();
+      }}
+    />
+  );
+  const OpenInArcAction = (
+    <Action
+      title="Open in Little Arc"
+      icon={Icon.Globe}
+      onAction={() => {
+        open(url, ARC_PATH);
+        if (updateFrecency) updateFrecency();
+      }}
+    />
+  );
+  const isLiveAdmin = baseUrl === LIVE_URL && data.isAdminUrl;
+
   return (
     <ActionPanel>
-      <Action
-        title={`Open in ${BROWSER_NAME}`}
-        icon={Icon.Globe}
-        onAction={() => {
-          open(url, BROWSER_PATH);
-          if (updateFrecency) updateFrecency();
-        }}
-      />
-      <Action
-        title="Open in Little Arc"
-        icon={Icon.Globe}
-        onAction={() => {
-          open(url, ARC_PATH);
-          if (updateFrecency) updateFrecency();
-        }}
-      />
+      {isLiveAdmin ? OpenInArcAction : OpenInBrowserAction}
+      {isLiveAdmin ? OpenInBrowserAction : OpenInArcAction}
       <Action.CopyToClipboard
         title="Copy Link"
         content={url}
@@ -309,10 +330,8 @@ function LinkActionPanel({
             title="Open Chart Editor"
             icon={Icon.Pencil}
             onAction={() => {
-              const editorBaseUrl =
-                baseUrl === LIVE_URL ? LIVE_ADMIN_URL : baseUrl;
               const chartEditorUrl = makeUrl(
-                editorBaseUrl,
+                baseAdminUrl,
                 `/admin/charts/${data.chartId}/edit`,
               );
               open(
