@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Action,
   ActionPanel,
@@ -27,8 +28,9 @@ interface Data {
   queryParams?: string;
 
   // chart
-  slug?: string;
+  chartSlug?: string;
   chartId?: string;
+  chartConfig?: Record<string, unknown>;
 
   isAdminUrl?: boolean;
 }
@@ -63,6 +65,8 @@ export default function Command() {
   const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
   const copiedText = clipboardText.trim();
 
+  const [isShowingDetail, setIsShowingDetail] = useState(false);
+
   const content: Data = {};
 
   // check if the clipboard content is an OWID URL
@@ -93,7 +97,7 @@ export default function Command() {
     }
 
     // extract slug from grapher page url
-    content.slug = content.pathname.match(
+    content.chartSlug = content.pathname.match(
       /^\/grapher\/(?<slug>.+)/m,
     )?.groups?.slug;
 
@@ -108,7 +112,7 @@ export default function Command() {
     copiedText.match(TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS)?.groups ??
     copiedText.match(TEST_SVG_FILENAME_REGEX)?.groups;
   if (fromFilename) {
-    content.slug = fromFilename.slug;
+    content.chartSlug = fromFilename.slug;
     content.pathname = `/grapher/${fromFilename.slug}`;
     content.queryParams = fromFilename.queryParams;
   }
@@ -117,22 +121,24 @@ export default function Command() {
   const [maybeSlug, maybeQueryParams] = copiedText.split("?");
   const validationResult = validateSlug(maybeSlug);
   if (validationResult.slug) {
-    content.slug = validationResult.slug;
+    content.chartSlug = validationResult.slug;
     content.pathname = `/grapher/${validationResult.slug}`;
     content.queryParams = maybeQueryParams;
   }
 
   // fetch chart info
   const {
-    chartId,
-    slug,
+    id: chartId,
+    slug: chartSlug,
+    config: chartConfig,
     isLoading: isLoadingChartInfo,
   } = fetchChart({
-    slug: content.slug,
+    slug: content.chartSlug,
     chartId: content.chartId,
   });
   if (chartId) content.chartId = chartId;
-  if (slug) content.slug = slug;
+  if (chartSlug) content.chartSlug = chartSlug;
+  if (chartConfig) content.chartConfig = chartConfig;
 
   const isLoading =
     isLoadingClipboardText ||
@@ -142,31 +148,53 @@ export default function Command() {
 
   const liveOriginUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
+  const detail = content.chartConfig
+    ? makeDetails(content.chartConfig)
+    : undefined;
+
+  const detailProps = {
+    hasDetail: !!detail,
+    isShowingDetail,
+    setIsShowingDetail,
+  };
+
   return (
-    <List isLoading={isLoading}>
+    <List isLoading={isLoading} isShowingDetail={!!detail && isShowingDetail}>
       <List.Item
         title={makeUrl(liveOriginUrl, content.pathname, content.queryParams)}
-        accessories={[{ text: "Live" }]}
         icon={linkIcon}
-        actions={<LinkActionPanel baseUrl={LIVE_URL} data={content} />}
+        accessories={[{ text: "Live" }]}
+        detail={<List.Item.Detail markdown={detail} />}
+        actions={
+          <LinkActionPanel baseUrl={LIVE_URL} data={content} {...detailProps} />
+        }
       />
       <List.Item
         title={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
-        accessories={[{ text: "Local" }]}
         icon={linkIcon}
-        actions={<LinkActionPanel baseUrl={LOCAL_URL} data={content} />}
+        accessories={[{ text: "Local" }]}
+        detail={<List.Item.Detail markdown={detail} />}
+        actions={
+          <LinkActionPanel
+            baseUrl={LOCAL_URL}
+            data={content}
+            {...detailProps}
+          />
+        }
       />
       <List.Section title="Staging">
         {sortedPullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
             title={makeUrl(pr.staging, content.pathname, content.queryParams)}
-            accessories={[{ date: pr.updatedAt }]}
             icon={linkIcon}
+            accessories={[{ date: pr.updatedAt }]}
+            detail={<List.Item.Detail markdown={detail} />}
             actions={
               <LinkActionPanel
                 baseUrl={pr.staging}
                 data={content}
+                {...detailProps}
                 updateFrecency={() => visitStaging(pr)}
               />
             }
@@ -180,10 +208,16 @@ export default function Command() {
 function LinkActionPanel({
   baseUrl,
   data,
+  hasDetail,
+  isShowingDetail,
+  setIsShowingDetail,
   updateFrecency,
 }: {
   baseUrl: string;
   data: Data;
+  hasDetail: boolean;
+  isShowingDetail: boolean;
+  setIsShowingDetail: (value: boolean) => void;
   updateFrecency?: () => Promise<void>;
 }) {
   const url = makeUrl(baseUrl, data.pathname, data.queryParams);
@@ -197,7 +231,7 @@ function LinkActionPanel({
     randomCharts[Math.floor(Math.random() * randomCharts.length)];
 
   const { variables, isLoading: isLoadingVariables } = fetchVariables(
-    data.slug ?? "",
+    data.chartSlug ?? "",
   );
 
   return (
@@ -226,32 +260,45 @@ function LinkActionPanel({
           if (updateFrecency) updateFrecency();
         }}
       />
-      {data.slug && (
-        <Action.CopyToClipboard
-          title="Copy Slug"
-          content={data.slug}
-          onCopy={() => {
-            if (updateFrecency) updateFrecency();
-          }}
-        />
-      )}
-      {data.chartId && (
-        <Action.CopyToClipboard
-          title="Copy Chart ID"
-          content={data.chartId}
-          onCopy={() => {
-            if (updateFrecency) updateFrecency();
-          }}
-        />
-      )}
+
+      <ActionPanel.Section>
+        {data.chartSlug && (
+          <Action.CopyToClipboard
+            title="Copy Slug"
+            content={data.chartSlug}
+            onCopy={() => {
+              if (updateFrecency) updateFrecency();
+            }}
+          />
+        )}
+        {data.chartId && (
+          <Action.CopyToClipboard
+            title="Copy Chart ID"
+            content={data.chartId}
+            onCopy={() => {
+              if (updateFrecency) updateFrecency();
+            }}
+          />
+        )}
+        {hasDetail && (
+          <Action
+            title={(isShowingDetail ? "Hide" : "Show") + " Chart Config"}
+            icon={Icon.Cog}
+            onAction={() => setIsShowingDetail(!isShowingDetail)}
+          />
+        )}
+      </ActionPanel.Section>
 
       <ActionPanel.Section title="Related Pages">
-        {data.isAdminUrl && data.slug && (
+        {data.isAdminUrl && data.chartSlug && (
           <Action
             title="Open Grapher Page"
             icon={Icon.LineChart}
             onAction={() => {
-              const grapherPageUrl = makeUrl(baseUrl, `/grapher/${data.slug}`);
+              const grapherPageUrl = makeUrl(
+                baseUrl,
+                `/grapher/${data.chartSlug}`,
+              );
               open(grapherPageUrl, BROWSER_PATH);
               if (updateFrecency) updateFrecency();
             }}
@@ -312,7 +359,7 @@ function LinkActionPanel({
       )}
 
       <ActionPanel.Section
-        title={data.slug || data.chartId ? "More Pages" : undefined}
+        title={data.chartSlug || data.chartId ? "More Pages" : undefined}
       >
         {data.pathname !== "/grapher/life-expectancy" && (
           <Action
@@ -367,6 +414,13 @@ function LinkActionPanel({
 
 const makeUrl = (origin: string, pathname?: string, queryParams?: string) => {
   return origin + (pathname ?? "") + (queryParams ? `?${queryParams}` : "");
+};
+
+const makeDetails = (chartConfig: Record<string, unknown>) => {
+  let details = "```json\n";
+  details += JSON.stringify(chartConfig, null, 2);
+  details += "\n```";
+  return details;
 };
 
 const linkIcon = {

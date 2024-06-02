@@ -107,7 +107,7 @@ export function fetchChart({
   slug?: string;
   chartId?: string;
 }) {
-  let query = "select id, slug from charts";
+  let query = "select id, slug, config from charts";
 
   const whereClauses = [];
   if (slug) whereClauses.push(`slug = '${slug}'`);
@@ -116,7 +116,8 @@ export function fetchChart({
   if (whereClauses.length > 0) query += ` where ${whereClauses.join(" and ")}`;
   query += " limit 1";
 
-  const { data, isLoading } = fetchFromDatasette<[number, string]>(query);
+  const { data, isLoading } =
+    fetchFromDatasette<[number, string, string]>(query);
   if (!slug && !chartId) return { isLoading }; // dismiss if no input params were given
   if (!data || !data.ok) return { isLoading };
 
@@ -124,8 +125,9 @@ export function fetchChart({
   if (!firstRow) return { isLoading };
 
   return {
-    chartId: firstRow[0].toString(),
+    id: firstRow[0].toString(),
     slug: firstRow[1],
+    config: JSON.parse(firstRow[2]) as Record<string, unknown>,
     isLoading,
   };
 }
