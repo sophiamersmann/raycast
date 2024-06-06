@@ -12,11 +12,10 @@ import { useFrecencySorting } from "@raycast/utils";
 import {
   useClipboard,
   usePullRequests,
-  validateSlug,
   fetchRandomCharts,
   fetchVariables,
-  fetchChart,
   CHART_TYPES,
+  fetchChart,
 } from "./utils";
 
 interface Data {
@@ -117,34 +116,35 @@ export default function Command() {
     content.queryParams = fromFilename.queryParams;
   }
 
-  // check if the copied text is a valid slug associated with a chart
+  // check if the copied text is a valid slug or chart id
+  // and if so fetch its config
   const [maybeSlug, maybeQueryParams] = copiedText.split("?");
-  const validationResult = validateSlug(maybeSlug);
-  if (validationResult.slug) {
-    content.chartSlug = validationResult.slug;
-    content.pathname = `/grapher/${validationResult.slug}`;
-    content.queryParams = maybeQueryParams;
-  }
-
-  // fetch chart info
+  let maybeChartId: number | undefined = parseInt(copiedText);
+  if (isNaN(maybeChartId)) maybeChartId = undefined;
   const {
     id: chartId,
     slug: chartSlug,
     config: chartConfig,
-    isLoading: isLoadingChartInfo,
+    isLoading: isLoadingChart,
   } = fetchChart({
-    slug: content.chartSlug,
-    chartId: content.chartId,
+    slug: maybeSlug,
+    chartId: maybeChartId,
   });
-  if (chartId) content.chartId = chartId;
-  if (chartSlug) content.chartSlug = chartSlug;
-  if (chartConfig) content.chartConfig = chartConfig;
+  if (chartId) {
+    content.chartId = chartId;
+    content.chartSlug = chartSlug;
+    content.pathname = `/grapher/${chartSlug}`;
+    content.chartConfig = chartConfig
+
+    if (maybeSlug === chartSlug) {
+      content.queryParams = maybeQueryParams;
+    }
+  }
 
   const isLoading =
     isLoadingClipboardText ||
     isLoadingPullRequests ||
-    validationResult.isLoading ||
-    isLoadingChartInfo;
+    isLoadingChart;
 
   const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 

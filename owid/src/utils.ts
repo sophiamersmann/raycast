@@ -86,26 +86,9 @@ function fetchFromDatasette<TRow>(query: string, options?: { ttl?: number }) {
   return { data, isLoading };
 }
 
-export function validateSlug(text: string) {
-  const query = `select slug from charts where slug = '${text}' limit 1`;
-  const { data, isLoading } = fetchFromDatasette<[string]>(query);
-  if (!data || !data.ok) return { isLoading };
-
-  const firstRow = data.rows[0];
-  if (!firstRow) return { isLoading };
-
-  return {
-    slug: firstRow[0],
-    isLoading,
-  };
-}
-
-export function fetchChart({
-  slug = "",
-  chartId = "",
-}: {
+export function fetchChart({slug, chartId}: {
   slug?: string;
-  chartId?: string;
+  chartId?: number;
 }) {
   let query = "select id, slug, config from charts";
 
@@ -113,7 +96,7 @@ export function fetchChart({
   if (slug) whereClauses.push(`slug = '${slug}'`);
   if (chartId) whereClauses.push(`id = ${chartId}`);
 
-  if (whereClauses.length > 0) query += ` where ${whereClauses.join(" and ")}`;
+  if (whereClauses.length > 0) query += ` where ${whereClauses.join(" or ")}`;
   query += " limit 1";
 
   const { data, isLoading } =
