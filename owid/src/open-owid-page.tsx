@@ -134,7 +134,7 @@ export default function Command() {
     content.chartId = chartId;
     content.chartSlug = chartSlug;
     content.pathname = `/grapher/${chartSlug}`;
-    content.chartConfig = chartConfig
+    content.chartConfig = chartConfig;
 
     if (maybeSlug === chartSlug) {
       content.queryParams = maybeQueryParams;
@@ -142,9 +142,7 @@ export default function Command() {
   }
 
   const isLoading =
-    isLoadingClipboardText ||
-    isLoadingPullRequests ||
-    isLoadingChart;
+    isLoadingClipboardText || isLoadingPullRequests || isLoadingChart;
 
   const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
@@ -200,6 +198,7 @@ export default function Command() {
               <LinkActionPanel
                 baseUrl={pr.staging}
                 baseAdminUrl={pr.staging}
+                branch={pr.branch}
                 data={content}
                 {...detailProps}
                 updateFrecency={() => visitStaging(pr)}
@@ -215,6 +214,7 @@ export default function Command() {
 function LinkActionPanel({
   baseUrl,
   baseAdminUrl,
+  branch,
   data,
   hasDetail,
   isShowingDetail,
@@ -223,6 +223,7 @@ function LinkActionPanel({
 }: {
   baseUrl: string;
   baseAdminUrl: string;
+  branch?: string;
   data: Data;
   hasDetail: boolean;
   isShowingDetail: boolean;
@@ -425,6 +426,21 @@ function LinkActionPanel({
               />
             );
           })}
+        </ActionPanel.Section>
+      )}
+
+      {branch && (
+        <ActionPanel.Section title="SVG Tester">
+          <Action.OpenInBrowser
+            title="Open Default Views Report"
+            icon={Icon.Shield}
+            url={`raycast://script-commands/open-svg-tester-report-default-views?arguments=${branch}`}
+          />
+          <Action.OpenInBrowser
+            title="Open All Views Report"
+            icon={Icon.Shield}
+            url={`raycast://script-commands/open-svg-tester-report-all-views?arguments=${branch}`}
+          />
         </ActionPanel.Section>
       )}
     </ActionPanel>

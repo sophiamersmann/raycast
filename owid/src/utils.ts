@@ -86,7 +86,10 @@ function fetchFromDatasette<TRow>(query: string, options?: { ttl?: number }) {
   return { data, isLoading };
 }
 
-export function fetchChart({slug, chartId}: {
+export function fetchChart({
+  slug,
+  chartId,
+}: {
   slug?: string;
   chartId?: number;
 }) {
