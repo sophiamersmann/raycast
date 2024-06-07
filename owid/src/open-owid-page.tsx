@@ -28,7 +28,7 @@ interface Data {
 
   // chart
   chartSlug?: string;
-  chartId?: string;
+  chartId?: number;
   chartConfig?: Record<string, unknown>;
 
   isAdminUrl?: boolean;
@@ -101,9 +101,13 @@ export default function Command() {
     )?.groups?.slug;
 
     // extract chart id from chart edit page url
-    content.chartId = content.pathname.match(
+    const chartId = content.pathname.match(
       /^\/admin\/charts\/(?<chartId>\d+).*/m,
     )?.groups?.chartId;
+    const parsedChartId = parseInt(chartId ?? "");
+    if (!isNaN(parsedChartId)) {
+      content.chartId = parsedChartId;
+    }
   }
 
   // check if the copied text is a filename from the owid-grapher-svgs repo
@@ -127,8 +131,8 @@ export default function Command() {
     config: chartConfig,
     isLoading: isLoadingChart,
   } = fetchChart({
-    slug: maybeSlug,
-    chartId: maybeChartId,
+    slug: content.chartSlug ?? maybeSlug,
+    chartId: content.chartId ?? maybeChartId,
   });
   if (chartId) {
     content.chartId = chartId;

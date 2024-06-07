@@ -111,7 +111,7 @@ export function fetchChart({
   if (!firstRow) return { isLoading };
 
   return {
-    id: firstRow[0].toString(),
+    id: firstRow[0],
     slug: firstRow[1],
     config: JSON.parse(firstRow[2]) as Record<string, unknown>,
     isLoading,
