@@ -151,7 +151,7 @@ export default function Command() {
   const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
 
   const detail = content.chartConfig
-    ? makeDetails(content.chartConfig)
+    ? makeDetail(content.chartConfig)
     : undefined;
 
   const detailProps = {
@@ -258,7 +258,7 @@ function LinkActionPanel({
       icon={Icon.Globe}
       onAction={() => {
         open(url, BROWSER_PATH);
-        if (updateFrecency) updateFrecency();
+        updateFrecency?.();
       }}
     />
   );
@@ -268,7 +268,7 @@ function LinkActionPanel({
       icon={Icon.Globe}
       onAction={() => {
         open(url, ARC_PATH);
-        if (updateFrecency) updateFrecency();
+        updateFrecency?.();
       }}
     />
   );
@@ -283,7 +283,7 @@ function LinkActionPanel({
         content={url}
         shortcut={Keyboard.Shortcut.Common.Copy}
         onCopy={() => {
-          if (updateFrecency) updateFrecency();
+          updateFrecency?.();
         }}
       />
 
@@ -293,7 +293,7 @@ function LinkActionPanel({
             title="Copy Slug"
             content={data.chartSlug}
             onCopy={() => {
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -302,7 +302,7 @@ function LinkActionPanel({
             title="Copy Chart ID"
             content={data.chartId}
             onCopy={() => {
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -310,7 +310,10 @@ function LinkActionPanel({
           <Action
             title={(isShowingDetail ? "Hide" : "Show") + " Chart Config"}
             icon={Icon.Cog}
-            onAction={() => setIsShowingDetail(!isShowingDetail)}
+            onAction={() => {
+              setIsShowingDetail(!isShowingDetail);
+              updateFrecency?.();
+            }}
           />
         )}
       </ActionPanel.Section>
@@ -326,7 +329,7 @@ function LinkActionPanel({
                 `/grapher/${data.chartSlug}`,
               );
               open(grapherPageUrl, BROWSER_PATH);
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -343,7 +346,7 @@ function LinkActionPanel({
                 chartEditorUrl,
                 baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
               );
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -357,7 +360,7 @@ function LinkActionPanel({
                 `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                 BROWSER_PATH,
               );
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -375,7 +378,7 @@ function LinkActionPanel({
                   `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                   BROWSER_PATH,
                 );
-                if (updateFrecency) updateFrecency();
+                updateFrecency?.();
               }}
             />
           ))}
@@ -391,7 +394,7 @@ function LinkActionPanel({
             icon={Icon.LineChart}
             onAction={() => {
               open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -404,7 +407,7 @@ function LinkActionPanel({
                 makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
                 BROWSER_PATH,
               );
-              if (updateFrecency) updateFrecency();
+              updateFrecency?.();
             }}
           />
         )}
@@ -425,7 +428,7 @@ function LinkActionPanel({
                     makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
                     BROWSER_PATH,
                   );
-                  if (updateFrecency) updateFrecency();
+                  updateFrecency?.();
                 }}
               />
             );
@@ -439,11 +442,13 @@ function LinkActionPanel({
             title="Open Default Views Report"
             icon={Icon.Shield}
             url={`raycast://script-commands/open-svg-tester-report-default-views?arguments=${branch}`}
+            onOpen={() => updateFrecency?.()}
           />
           <Action.OpenInBrowser
             title="Open All Views Report"
             icon={Icon.Shield}
             url={`raycast://script-commands/open-svg-tester-report-all-views?arguments=${branch}`}
+            onOpen={() => updateFrecency?.()}
           />
         </ActionPanel.Section>
       )}
@@ -455,11 +460,11 @@ const makeUrl = (origin: string, pathname?: string, queryParams?: string) => {
   return origin + (pathname ?? "") + (queryParams ? `?${queryParams}` : "");
 };
 
-const makeDetails = (chartConfig: Record<string, unknown>) => {
-  let details = "```json\n";
-  details += JSON.stringify(chartConfig, null, 2);
-  details += "\n```";
-  return details;
+const makeDetail = (chartConfig: Record<string, unknown>) => {
+  let detail = "```json\n";
+  detail += JSON.stringify(chartConfig, null, 2);
+  detail += "\n```";
+  return detail;
 };
 
 const linkIcon = {
