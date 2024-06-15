@@ -137,8 +137,11 @@ export default function Command() {
   if (chartId) {
     content.chartId = chartId;
     content.chartSlug = chartSlug;
-    content.pathname = `/grapher/${chartSlug}`;
     content.chartConfig = chartConfig;
+
+    if (!content.pathname) {
+      content.pathname = `/grapher/${chartSlug}`;
+    }
 
     if (maybeSlug === chartSlug) {
       content.queryParams = maybeQueryParams;
