@@ -8,7 +8,6 @@ import {
   Keyboard,
   Color,
 } from "@raycast/api";
-import { useFrecencySorting } from "@raycast/utils";
 import {
   useClipboard,
   usePullRequests,
@@ -37,7 +36,7 @@ interface Data {
 const GITHUB_REPO = "owid/owid-grapher";
 const GITHUB_USER_NAME = "sophiamersmann";
 
-const BROWSER_PATH = "/Applications/Google Chrome Dev.app";
+const BROWSER_PATH = "/Applications/Google Chrome.app";
 const BROWSER_NAME = "Google Chrome";
 
 const ARC_PATH = "/Applications/Arc.app";
@@ -53,13 +52,11 @@ const TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS =
   /^all-views\/svg\/(?<slug>.+)\?(?<queryParams>.+)_v\d+.+$/m;
 
 export default function Command() {
-  // fetch pull requests and sort them by frecency
+  // fetch pull requests
   const { pullRequests, isLoading: isLoadingPullRequests } = usePullRequests(
     GITHUB_REPO,
     GITHUB_USER_NAME,
   );
-  const { data: sortedPullRequests, visitItem: visitStaging } =
-    useFrecencySorting(pullRequests, { key: (item) => item.branch });
 
   const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
   const copiedText = clipboardText.trim();
@@ -194,7 +191,7 @@ export default function Command() {
         }
       />
       <List.Section title="Staging">
-        {sortedPullRequests.map((pr) => (
+        {pullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
             title={makeUrl(pr.staging, content.pathname, content.queryParams)}
@@ -208,7 +205,6 @@ export default function Command() {
                 branch={pr.branch}
                 data={content}
                 {...detailProps}
-                updateFrecency={() => visitStaging(pr)}
               />
             }
           />
@@ -226,7 +222,6 @@ function LinkActionPanel({
   hasDetail,
   isShowingDetail,
   setIsShowingDetail,
-  updateFrecency,
 }: {
   baseUrl: string;
   baseAdminUrl: string;
@@ -235,7 +230,6 @@ function LinkActionPanel({
   hasDetail: boolean;
   isShowingDetail: boolean;
   setIsShowingDetail: (value: boolean) => void;
-  updateFrecency?: () => Promise<void>;
 }) {
   const url = makeUrl(
     data.isAdminUrl ? baseAdminUrl : baseUrl,
@@ -261,7 +255,6 @@ function LinkActionPanel({
       icon={Icon.Globe}
       onAction={() => {
         open(url, BROWSER_PATH);
-        updateFrecency?.();
       }}
     />
   );
@@ -271,7 +264,6 @@ function LinkActionPanel({
       icon={Icon.Globe}
       onAction={() => {
         open(url, ARC_PATH);
-        updateFrecency?.();
       }}
     />
   );
@@ -285,28 +277,16 @@ function LinkActionPanel({
         title="Copy Link"
         content={url}
         shortcut={Keyboard.Shortcut.Common.Copy}
-        onCopy={() => {
-          updateFrecency?.();
-        }}
       />
 
       <ActionPanel.Section>
         {data.chartSlug && (
-          <Action.CopyToClipboard
-            title="Copy Slug"
-            content={data.chartSlug}
-            onCopy={() => {
-              updateFrecency?.();
-            }}
-          />
+          <Action.CopyToClipboard title="Copy Slug" content={data.chartSlug} />
         )}
         {data.chartId && (
           <Action.CopyToClipboard
             title="Copy Chart ID"
             content={data.chartId}
-            onCopy={() => {
-              updateFrecency?.();
-            }}
           />
         )}
         {hasDetail && (
@@ -315,7 +295,6 @@ function LinkActionPanel({
             icon={Icon.Cog}
             onAction={() => {
               setIsShowingDetail(!isShowingDetail);
-              updateFrecency?.();
             }}
           />
         )}
@@ -332,7 +311,6 @@ function LinkActionPanel({
                 `/grapher/${data.chartSlug}`,
               );
               open(grapherPageUrl, BROWSER_PATH);
-              updateFrecency?.();
             }}
           />
         )}
@@ -349,7 +327,6 @@ function LinkActionPanel({
                 chartEditorUrl,
                 baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
               );
-              updateFrecency?.();
             }}
           />
         )}
@@ -363,7 +340,6 @@ function LinkActionPanel({
                 `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                 BROWSER_PATH,
               );
-              updateFrecency?.();
             }}
           />
         )}
@@ -381,7 +357,6 @@ function LinkActionPanel({
                   `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
                   BROWSER_PATH,
                 );
-                updateFrecency?.();
               }}
             />
           ))}
@@ -397,7 +372,6 @@ function LinkActionPanel({
             icon={Icon.LineChart}
             onAction={() => {
               open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
-              updateFrecency?.();
             }}
           />
         )}
@@ -410,7 +384,6 @@ function LinkActionPanel({
                 makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
                 BROWSER_PATH,
               );
-              updateFrecency?.();
             }}
           />
         )}
@@ -431,7 +404,6 @@ function LinkActionPanel({
                     makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
                     BROWSER_PATH,
                   );
-                  updateFrecency?.();
                 }}
               />
             );
@@ -445,13 +417,11 @@ function LinkActionPanel({
             title="Open Default Views Report"
             icon={Icon.Shield}
             url={`raycast://script-commands/open-svg-tester-report-default-views?arguments=${branch}`}
-            onOpen={() => updateFrecency?.()}
           />
           <Action.OpenInBrowser
             title="Open All Views Report"
             icon={Icon.Shield}
             url={`raycast://script-commands/open-svg-tester-report-all-views?arguments=${branch}`}
-            onOpen={() => updateFrecency?.()}
           />
         </ActionPanel.Section>
       )}
