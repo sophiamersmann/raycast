@@ -53,7 +53,7 @@ export function useClipboard() {
   return { clipboardText, isLoading };
 }
 
-export function usePullRequests(repo: string, userName: string) {
+export function usePullRequests(repo: string, userName?: string) {
   const GITHUB_API_URL = `https://api.github.com/repos/${repo}/pulls`;
 
   const { data = [], isLoading } = useFetch<PullRequest[]>(
@@ -61,7 +61,7 @@ export function usePullRequests(repo: string, userName: string) {
   );
 
   const pullRequests = data
-    .filter((pr) => pr.user.login === userName)
+    .filter((pr) => (userName ? pr.user.login === userName : true))
     .map((pr) => ({
       branch: pr.head.ref,
       updatedAt: new Date(pr.updated_at),

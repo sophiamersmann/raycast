@@ -51,17 +51,27 @@ const TEST_SVG_FILENAME_REGEX = /^svg\/(?<slug>.+)_v\d+.+$/m;
 const TEST_SVG_FILENAME_REGEX_WITH_QUERY_PARAMS =
   /^all-views\/svg\/(?<slug>.+)\?(?<queryParams>.+)_v\d+.+$/m;
 
-export default function Command() {
-  // fetch pull requests
-  const { pullRequests, isLoading: isLoadingPullRequests } = usePullRequests(
-    GITHUB_REPO,
-    GITHUB_USER_NAME,
-  );
+enum StagingSitesFilter {
+  Mine = "mine",
+  Team = "team",
+}
 
+export default function Command() {
   const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
   const copiedText = clipboardText.trim();
 
   const [isShowingDetail, setIsShowingDetail] = useState(false);
+  const [stagingSitesFilter, setStagingSitesFilter] = useState(
+    StagingSitesFilter.Mine,
+  );
+
+  // fetch pull requests
+  const fetchMyPullRequestsOnly =
+    stagingSitesFilter === StagingSitesFilter.Mine;
+  const { pullRequests, isLoading: isLoadingPullRequests } = usePullRequests(
+    GITHUB_REPO,
+    fetchMyPullRequestsOnly ? GITHUB_USER_NAME : undefined,
+  );
 
   const content: Data = {};
 
@@ -161,7 +171,28 @@ export default function Command() {
   };
 
   return (
-    <List isLoading={isLoading} isShowingDetail={!!detail && isShowingDetail}>
+    <List
+      isLoading={isLoading}
+      isShowingDetail={!!detail && isShowingDetail}
+      searchBarAccessory={
+        <List.Dropdown
+          tooltip="Select which staging sites to show"
+          defaultValue={StagingSitesFilter.Mine}
+          onChange={(newValue) =>
+            setStagingSitesFilter(newValue as StagingSitesFilter)
+          }
+        >
+          <List.Dropdown.Item
+            title="My Staging Sites"
+            value={StagingSitesFilter.Mine}
+          />
+          <List.Dropdown.Item
+            title="The Team's Staging Sites"
+            value={StagingSitesFilter.Team}
+          />
+        </List.Dropdown>
+      }
+    >
       <List.Item
         title={makeUrl(liveUrl, content.pathname, content.queryParams)}
         icon={linkIcon}
