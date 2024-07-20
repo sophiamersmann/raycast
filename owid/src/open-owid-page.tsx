@@ -278,6 +278,12 @@ function LinkActionPanel({
         content={url}
         shortcut={Keyboard.Shortcut.Common.Copy}
       />
+      {branch && (
+        <Action.CopyToClipboard
+          title="Copy SSH Command"
+          content={`ssh owid@staging-site-${branch}`}
+        />
+      )}
 
       <ActionPanel.Section>
         {data.chartSlug && (

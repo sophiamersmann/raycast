@@ -18,8 +18,8 @@ cd ~/code/owid/owid-grapher-svgs
 git fetch && git checkout -f $1 && git reset --hard origin/$1 && git clean -fd
 
 if test -f report_default-views.html; then
-    open -a Google\ Chrome\ Dev.app report_default-views.html
-    echo "Report opened in Chrome Dev"
+    open -a Google\ Chrome.app report_default-views.html
+    echo "Report opened in Chrome"
 else
     echo "No report found"
 fi
