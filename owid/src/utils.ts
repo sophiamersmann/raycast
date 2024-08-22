@@ -170,25 +170,16 @@ export function fetchRandomCharts() {
   };
 }
 
-export function fetchVariables(slug: string) {
+export function fetchVariables(chartId: number) {
   const query = `
-    with variableIds as (
-      select
-        c.id as chartId,
-        d.value ->> "$.variableId" as variableId
-      from
-        charts c,
-        json_each(config, '$.dimensions') d
-      where
-        c.slug = '${slug}'
-    )
     select
-      vid.variableId,
+      cd.variableId,
       v.name,
-      v.display ->> "$.name" as displayName
-    from
-      variableIds vid
-      join variables v on v.id = vid.variableId`;
+      v.display ->> 'name' as displayName
+    from chart_dimensions cd
+    join charts c on c.id = cd.chartId
+    join variables v ON v.id = cd.variableId
+    where c.id = ${chartId}`;
 
   const { data, isLoading } =
     fetchFromDatasette<[number, string, string]>(query);

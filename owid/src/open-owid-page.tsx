@@ -277,7 +277,7 @@ function LinkActionPanel({
     randomCharts[Math.floor(Math.random() * randomCharts.length)];
 
   const { variables, isLoading: isLoadingVariables } = fetchVariables(
-    data.chartSlug ?? "",
+    data.chartId ?? 0,
   );
 
   const OpenInBrowserAction = (
@@ -298,7 +298,9 @@ function LinkActionPanel({
       }}
     />
   );
-  const isLiveAdmin = baseUrl === LIVE_URL && data.isAdminUrl;
+
+  const isLivePage = baseUrl === LIVE_URL;
+  const isLiveAdmin = isLivePage && data.isAdminUrl;
 
   return (
     <ActionPanel>
@@ -338,6 +340,18 @@ function LinkActionPanel({
       </ActionPanel.Section>
 
       <ActionPanel.Section title="Related Pages">
+        {!data.isAdminUrl && !data.chartSlug && (
+          <Action
+            title="Open Admin"
+            icon={Icon.Pencil}
+            onAction={() => {
+              const adminUrl = isLivePage
+                ? LIVE_ADMIN_URL
+                : makeUrl(baseUrl, "/admin");
+              open(adminUrl, isLivePage ? ARC_PATH : BROWSER_PATH);
+            }}
+          />
+        )}
         {data.isAdminUrl && data.chartSlug && (
           <Action
             title="Open Grapher Page"
