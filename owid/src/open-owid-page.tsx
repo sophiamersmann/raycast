@@ -337,6 +337,19 @@ function LinkActionPanel({
             }}
           />
         )}
+        {data.chartSlug && (
+          <Action
+            title="Open Chart Config (API)"
+            icon={Icon.Pencil}
+            onAction={() => {
+              const configUrl = makeUrl(
+                LIVE_URL,
+                `/grapher/${data.chartSlug}.config.json`,
+              );
+              open(configUrl, BROWSER_PATH);
+            }}
+          />
+        )}
       </ActionPanel.Section>
 
       <ActionPanel.Section title="Related Pages">
