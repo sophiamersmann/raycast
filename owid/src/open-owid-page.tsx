@@ -158,8 +158,6 @@ export default function Command() {
   const isLoading =
     isLoadingClipboardText || isLoadingPullRequests || isLoadingChart;
 
-  const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
-
   const detail = content.chartConfig
     ? makeDetail(content.chartConfig)
     : undefined;
@@ -194,9 +192,8 @@ export default function Command() {
       }
     >
       <List.Item
-        title={makeUrl(liveUrl, content.pathname, content.queryParams)}
+        title={`🌐 live ${makePartialUrl(content.pathname, content.queryParams)}`}
         icon={linkIcon}
-        accessories={[{ text: "Live" }]}
         detail={<List.Item.Detail markdown={detail} />}
         actions={
           <LinkActionPanel
@@ -208,9 +205,8 @@ export default function Command() {
         }
       />
       <List.Item
-        title={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
+        title={`🏡 local ${makePartialUrl(content.pathname, content.queryParams)}`}
         icon={linkIcon}
-        accessories={[{ text: "Local" }]}
         detail={<List.Item.Detail markdown={detail} />}
         actions={
           <LinkActionPanel
@@ -225,7 +221,7 @@ export default function Command() {
         {pullRequests.map((pr) => (
           <List.Item
             key={pr.staging}
-            title={makeUrl(pr.staging, content.pathname, content.queryParams)}
+            title={`${pr.title} ${makePartialUrl(content.pathname, content.queryParams)}`}
             icon={linkIcon}
             accessories={[{ date: pr.updatedAt }]}
             detail={<List.Item.Detail markdown={detail} />}
@@ -495,6 +491,11 @@ function LinkActionPanel({
 
 const makeUrl = (origin: string, pathname?: string, queryParams?: string) => {
   return origin + (pathname ?? "") + (queryParams ? `?${queryParams}` : "");
+};
+
+const makePartialUrl = (pathname?: string, queryParams?: string) => {
+  if (!pathname) return "";
+  return `— ${pathname?.replace(/^\//, "")}${queryParams ? `?${queryParams}` : ""}`;
 };
 
 const makeDetail = (chartConfig: Record<string, unknown>) => {
