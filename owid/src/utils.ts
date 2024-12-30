@@ -31,6 +31,7 @@ const CHART_TYPE_DATA: Record<ChartType, { name: string; icon: Icon }> = {
 };
 
 type PullRequest = {
+  title: string;
   head: {
     ref: string;
   };
@@ -63,6 +64,7 @@ export function usePullRequests(repo: string, userName?: string) {
   const pullRequests = data
     .filter((pr) => (userName ? pr.user.login === userName : true))
     .map((pr) => ({
+      title: pr.title,
       branch: pr.head.ref,
       updatedAt: new Date(pr.updated_at),
       staging: `http://staging-site-${pr.head.ref}`,
