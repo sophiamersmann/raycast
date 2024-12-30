@@ -8,14 +8,16 @@ import {
   Keyboard,
   Color,
 } from "@raycast/api";
+
 import {
-  useClipboard,
   usePullRequests,
   fetchRandomCharts,
   fetchVariables,
-  CHART_TYPES,
   fetchChart,
-} from "./utils";
+  useClipboard,
+} from "./utils/helpers";
+import { ARC_PATH, BROWSER_PATH, CHART_TYPES } from "./utils/constants";
+import { OpenInArcAction, OpenInBrowserAction } from "./utils/components";
 
 interface Data {
   clipboardText?: string;
@@ -35,11 +37,6 @@ interface Data {
 
 const GITHUB_REPO = "owid/owid-grapher";
 const GITHUB_USER_NAME = "sophiamersmann";
-
-const BROWSER_PATH = "/Applications/Google Chrome.app";
-const BROWSER_NAME = "Google Chrome";
-
-const ARC_PATH = "/Applications/Arc.app";
 
 const LIVE_URL = "https://ourworldindata.org";
 const LOCAL_URL = "http://localhost:3030";
@@ -155,6 +152,8 @@ export default function Command() {
     }
   }
 
+  const liveUrl = content.isAdminUrl ? LIVE_ADMIN_URL : LIVE_URL;
+
   const isLoading =
     isLoadingClipboardText || isLoadingPullRequests || isLoadingChart;
 
@@ -192,7 +191,8 @@ export default function Command() {
       }
     >
       <List.Item
-        title={`🌐 live ${makePartialUrl(content.pathname, content.queryParams)}`}
+        title={`Live`}
+        subtitle={makeUrl(liveUrl, content.pathname, content.queryParams)}
         icon={linkIcon}
         detail={<List.Item.Detail markdown={detail} />}
         actions={
@@ -205,7 +205,8 @@ export default function Command() {
         }
       />
       <List.Item
-        title={`🏡 local ${makePartialUrl(content.pathname, content.queryParams)}`}
+        title={`Local`}
+        subtitle={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
         icon={linkIcon}
         detail={<List.Item.Detail markdown={detail} />}
         actions={
@@ -217,18 +218,21 @@ export default function Command() {
           />
         }
       />
-      <List.Section title="Staging">
+      <List.Section
+        title={`Staging Sites`}
+        subtitle={`${makePartialUrl(content.pathname, content.queryParams)}`}
+      >
         {pullRequests.map((pr) => (
           <List.Item
-            key={pr.staging}
-            title={`${pr.title} ${makePartialUrl(content.pathname, content.queryParams)}`}
+            key={pr.stagingUrl}
+            title={`${pr.title}`}
             icon={linkIcon}
             accessories={[{ date: pr.updatedAt }]}
             detail={<List.Item.Detail markdown={detail} />}
             actions={
               <LinkActionPanel
-                baseUrl={pr.staging}
-                baseAdminUrl={pr.staging}
+                baseUrl={pr.stagingUrl}
+                baseAdminUrl={pr.stagingUrl}
                 branch={pr.branch}
                 data={content}
                 {...detailProps}
@@ -276,45 +280,69 @@ function LinkActionPanel({
     data.chartId ?? 0,
   );
 
-  const OpenInBrowserAction = (
-    <Action
-      title={`Open in ${BROWSER_NAME}`}
-      icon={Icon.Globe}
-      onAction={() => {
-        open(url, BROWSER_PATH);
-      }}
-    />
-  );
-  const OpenInArcAction = (
-    <Action
-      title="Open in Little Arc"
-      icon={Icon.Globe}
-      onAction={() => {
-        open(url, ARC_PATH);
-      }}
-    />
-  );
-
   const isLivePage = baseUrl === LIVE_URL;
   const isLiveAdmin = isLivePage && data.isAdminUrl;
 
   return (
     <ActionPanel>
-      {isLiveAdmin ? OpenInArcAction : OpenInBrowserAction}
-      {isLiveAdmin ? OpenInBrowserAction : OpenInArcAction}
-      <Action.CopyToClipboard
-        title="Copy Link"
-        content={url}
-        shortcut={Keyboard.Shortcut.Common.Copy}
-      />
-      {branch && (
-        <Action.CopyToClipboard
-          title="Copy SSH Command"
-          content={`ssh owid@staging-site-${branch}`}
+      {isLiveAdmin ? (
+        <OpenInArcAction url={url} />
+      ) : (
+        <OpenInBrowserAction url={url} />
+      )}
+      {isLiveAdmin ? (
+        <OpenInBrowserAction url={url} />
+      ) : (
+        <OpenInArcAction url={url} />
+      )}
+      {!data.isAdminUrl && !data.chartSlug && (
+        <Action
+          title="Open Admin"
+          icon={Icon.Globe}
+          onAction={() => {
+            const adminUrl = isLivePage
+              ? LIVE_ADMIN_URL
+              : makeUrl(baseUrl, "/admin");
+            open(adminUrl, isLivePage ? ARC_PATH : BROWSER_PATH);
+          }}
+        />
+      )}
+      {!data.isAdminUrl && data.chartId && (
+        <Action
+          title="Open Chart Editor"
+          icon={Icon.Globe}
+          onAction={() => {
+            const chartEditorUrl = makeUrl(
+              baseAdminUrl,
+              `/admin/charts/${data.chartId}/edit`,
+            );
+            open(
+              chartEditorUrl,
+              baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
+            );
+          }}
+        />
+      )}
+      {data.isAdminUrl && data.chartSlug && (
+        <Action
+          title="Open Grapher Page"
+          icon={Icon.LineChart}
+          onAction={() => {
+            const grapherPageUrl = makeUrl(
+              baseUrl,
+              `/grapher/${data.chartSlug}`,
+            );
+            open(grapherPageUrl, BROWSER_PATH);
+          }}
         />
       )}
 
       <ActionPanel.Section>
+        <Action.CopyToClipboard
+          title="Copy Link"
+          content={url}
+          shortcut={Keyboard.Shortcut.Common.Copy}
+        />
         {data.chartSlug && (
           <Action.CopyToClipboard title="Copy Slug" content={data.chartSlug} />
         )}
@@ -324,10 +352,19 @@ function LinkActionPanel({
             content={data.chartId}
           />
         )}
+        {branch && (
+          <Action.CopyToClipboard
+            title="Copy SSH Command"
+            content={`ssh owid@staging-site-${branch}`}
+          />
+        )}
+      </ActionPanel.Section>
+
+      <ActionPanel.Section>
         {hasDetail && (
           <Action
             title={(isShowingDetail ? "Hide" : "Show") + " Chart Config"}
-            icon={Icon.Cog}
+            icon={isShowingDetail ? Icon.ArrowsContract : Icon.ArrowsExpand}
             onAction={() => {
               setIsShowingDetail(!isShowingDetail);
             }}
@@ -336,7 +373,7 @@ function LinkActionPanel({
         {data.chartSlug && (
           <Action
             title="Open Chart Config (API)"
-            icon={Icon.Pencil}
+            icon={Icon.Globe}
             onAction={() => {
               const configUrl = makeUrl(
                 LIVE_URL,
@@ -348,84 +385,7 @@ function LinkActionPanel({
         )}
       </ActionPanel.Section>
 
-      <ActionPanel.Section title="Related Pages">
-        {!data.isAdminUrl && !data.chartSlug && (
-          <Action
-            title="Open Admin"
-            icon={Icon.Pencil}
-            onAction={() => {
-              const adminUrl = isLivePage
-                ? LIVE_ADMIN_URL
-                : makeUrl(baseUrl, "/admin");
-              open(adminUrl, isLivePage ? ARC_PATH : BROWSER_PATH);
-            }}
-          />
-        )}
-        {data.isAdminUrl && data.chartSlug && (
-          <Action
-            title="Open Grapher Page"
-            icon={Icon.LineChart}
-            onAction={() => {
-              const grapherPageUrl = makeUrl(
-                baseUrl,
-                `/grapher/${data.chartSlug}`,
-              );
-              open(grapherPageUrl, BROWSER_PATH);
-            }}
-          />
-        )}
-        {!data.isAdminUrl && data.chartId && (
-          <Action
-            title="Open Chart Editor"
-            icon={Icon.Pencil}
-            onAction={() => {
-              const chartEditorUrl = makeUrl(
-                baseAdminUrl,
-                `/admin/charts/${data.chartId}/edit`,
-              );
-              open(
-                chartEditorUrl,
-                baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
-              );
-            }}
-          />
-        )}
-        {!isLoadingVariables && variables.length === 1 && (
-          <Action
-            title="Open Metadata"
-            icon={Icon.Receipt}
-            onAction={() => {
-              const variable = variables[0];
-              open(
-                `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
-                BROWSER_PATH,
-              );
-            }}
-          />
-        )}
-      </ActionPanel.Section>
-
-      {!isLoadingVariables && variables.length > 1 && (
-        <ActionPanel.Section title="Variables Metadata">
-          {variables.map((variable) => (
-            <Action
-              key={variable.id}
-              title={variable.name}
-              icon={Icon.Receipt}
-              onAction={() => {
-                open(
-                  `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
-                  BROWSER_PATH,
-                );
-              }}
-            />
-          ))}
-        </ActionPanel.Section>
-      )}
-
-      <ActionPanel.Section
-        title={data.chartSlug || data.chartId ? "More Pages" : undefined}
-      >
+      <ActionPanel.Section title="Charts">
         {data.pathname !== "/grapher/life-expectancy" && (
           <Action
             title="Open Life Expectancy Chart"
@@ -447,27 +407,44 @@ function LinkActionPanel({
             }}
           />
         )}
+        {!isLoadingRandomCharts && randomCharts.length > 0 && (
+          <>
+            {CHART_TYPES.map((chartType) => {
+              const randomChart = randomChartsByType.get(chartType);
+              if (!randomChart) return null;
+              return (
+                <Action
+                  key={randomChart.slug}
+                  title={`Open ${randomChart.name}`}
+                  icon={Icon.LineChart}
+                  onAction={() => {
+                    open(
+                      makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
+                      BROWSER_PATH,
+                    );
+                  }}
+                />
+              );
+            })}
+          </>
+        )}
       </ActionPanel.Section>
 
-      {!isLoadingRandomCharts && randomCharts.length > 0 && (
-        <ActionPanel.Section title="More Random Charts">
-          {CHART_TYPES.map((chartType) => {
-            const randomChart = randomChartsByType.get(chartType);
-            if (!randomChart) return null;
-            return (
-              <Action
-                key={randomChart.slug}
-                title={`Open ${randomChart.name}`}
-                icon={randomChart.icon}
-                onAction={() => {
-                  open(
-                    makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
-                    BROWSER_PATH,
-                  );
-                }}
-              />
-            );
-          })}
+      {!isLoadingVariables && (
+        <ActionPanel.Section title="Variables Metadata">
+          {variables.map((variable) => (
+            <Action
+              key={variable.id}
+              title={variable.name}
+              icon={Icon.Receipt}
+              onAction={() => {
+                open(
+                  `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
+                  BROWSER_PATH,
+                );
+              }}
+            />
+          ))}
         </ActionPanel.Section>
       )}
 
@@ -495,7 +472,7 @@ const makeUrl = (origin: string, pathname?: string, queryParams?: string) => {
 
 const makePartialUrl = (pathname?: string, queryParams?: string) => {
   if (!pathname) return "";
-  return `— ${pathname?.replace(/^\//, "")}${queryParams ? `?${queryParams}` : ""}`;
+  return `${pathname}${queryParams ? `?${queryParams}` : ""}`;
 };
 
 const makeDetail = (chartConfig: Record<string, unknown>) => {

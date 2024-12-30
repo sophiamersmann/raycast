@@ -1,58 +1,12 @@
-import { Icon, showToast, Toast, Clipboard } from "@raycast/api";
+import { readFileSync, writeFileSync } from "fs";
+
+import { showToast, Toast, Clipboard } from "@raycast/api";
 import { useFetch, usePromise } from "@raycast/utils";
 
+import { ChartsFileContent, ChartType, PullRequest, RawChart } from "./types";
+import { CHART_TYPE_DATA, CHARTS_STORAGE_PATH } from "./constants";
+
 const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
-
-export const CHART_TYPES = [
-  "LineChart",
-  "ScatterPlot",
-  "DiscreteBar",
-  "StackedDiscreteBar",
-  "StackedBar",
-  "StackedArea",
-  "SlopeChart",
-  "Marimekko",
-] as const;
-
-type ChartType = (typeof CHART_TYPES)[number];
-
-const CHART_TYPE_DATA: Record<ChartType, { name: string; icon: Icon }> = {
-  LineChart: { name: "Line Chart", icon: Icon.LineChart },
-  ScatterPlot: { name: "Scatter Plot", icon: Icon.LineChart },
-  StackedArea: { name: "Stacked Area Chart", icon: Icon.BarChart },
-  StackedBar: { name: "Stacked Bar Chart", icon: Icon.BarChart },
-  DiscreteBar: { name: "Discrete Bar Chart", icon: Icon.BarChart },
-  SlopeChart: { name: "Slope Chart", icon: Icon.LineChart },
-  StackedDiscreteBar: {
-    name: "Stacked Discrete Bar Chart",
-    icon: Icon.BarChart,
-  },
-  Marimekko: { name: "Marimekko Chart", icon: Icon.BarChart },
-};
-
-type PullRequest = {
-  title: string;
-  head: {
-    ref: string;
-  };
-  user: {
-    login: string;
-  };
-  updated_at: string;
-};
-
-export function useClipboard() {
-  const { data: clipboardText = "", isLoading } = usePromise(
-    Clipboard.readText,
-    [],
-    {
-      onError: async () => {
-        showToast(Toast.Style.Failure, "Failed to read clipboard content");
-      },
-    },
-  );
-  return { clipboardText, isLoading };
-}
 
 export function usePullRequests(repo: string, userName?: string) {
   const GITHUB_API_URL = `https://api.github.com/repos/${repo}/pulls`;
@@ -67,10 +21,14 @@ export function usePullRequests(repo: string, userName?: string) {
       title: pr.title,
       branch: pr.head.ref,
       updatedAt: new Date(pr.updated_at),
-      staging: `http://staging-site-${pr.head.ref}`,
+      stagingUrl: makeStagingUrl(pr.head.ref),
     }));
 
   return { pullRequests, isLoading };
+}
+
+function makeStagingUrl(branchName: string) {
+  return `http://staging-site-${branchName.slice(0, 28)}`;
 }
 
 function fetchFromDatasette<TRow>(query: string, options?: { ttl?: number }) {
@@ -198,4 +156,66 @@ export function fetchVariables(chartId: number) {
     variables,
     isLoading,
   };
+}
+
+export function persistCharts(content: ChartsFileContent) {
+  try {
+    const rawCharts = content.charts.map((chart) => ({
+      ...chart,
+      createdAt: chart.createdAt.toISOString(),
+    }));
+    writeJsonToFile({ charts: rawCharts }, CHARTS_STORAGE_PATH);
+  } catch (err) {
+    console.error("Error writing file:", err);
+    throw err;
+  }
+}
+
+export function loadCharts() {
+  try {
+    const data = readJsonFromFile(CHARTS_STORAGE_PATH) as {
+      charts: RawChart[];
+    };
+    const charts = data.charts.map((chart) => ({
+      ...chart,
+      createdAt: new Date(chart.createdAt),
+    }));
+    return { charts } as ChartsFileContent;
+  } catch (err) {
+    console.error("Error reading file:", err);
+    return { charts: [] } as ChartsFileContent;
+  }
+}
+
+export function useClipboard() {
+  const { data: clipboardText = "", isLoading } = usePromise(
+    Clipboard.readText,
+    [],
+    {
+      onError: async () => {
+        showToast(Toast.Style.Failure, "Failed to read clipboard content");
+      },
+    },
+  );
+  return { clipboardText, isLoading };
+}
+
+export function writeJsonToFile(json: unknown, path: string) {
+  writeFileSync(path, JSON.stringify(json, null, 2), "utf8");
+}
+
+export function readJsonFromFile(path: string) {
+  const data = readFileSync(path, "utf8");
+  return JSON.parse(data);
+}
+
+export function byCreatedAt(a: { createdAt: Date }, b: { createdAt: Date }) {
+  return b.createdAt.getTime() - a.createdAt.getTime();
+}
+
+export function makeThumbnailUrl(urlString: string) {
+  const url = new URL(urlString);
+  url.searchParams.set("imType", "og");
+  url.pathname = url.pathname + ".png";
+  return url.toString();
 }

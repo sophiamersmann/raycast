@@ -9,15 +9,23 @@
   "commands": [
     {
       "name": "open-owid-page",
-      "title": "Open OWID Page",
+      "title": "Open Page",
       "description": "Open clipboard text as OWID page in various environments",
+      "mode": "view",
+      "icon": "owid.png"
+    },
+    {
+      "name": "search-chart",
+      "title": "Search Chart",
+      "description": "Search for a chart in a collection of peculiar charts",
       "mode": "view",
       "icon": "owid.png"
     }
   ],
   "dependencies": {
     "@raycast/api": "^1.69.0",
-    "@raycast/utils": "^1.14.0"
+    "@raycast/utils": "^1.14.0",
+    "uuidv7": "^1.0.2"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.6",
