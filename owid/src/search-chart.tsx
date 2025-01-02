@@ -37,8 +37,25 @@ export default function Command() {
   }
 
   function handleCreate(chart: Chart) {
+    const isDuplicate = charts.some((c) => c.url === chart.url);
+
+    if (isDuplicate) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failure",
+        message: "Chart already exists",
+      });
+      return;
+    }
+
     const newCharts = [...charts, chart].sort(byCreatedAt);
     updateCharts(newCharts);
+
+    showToast({
+      style: Toast.Style.Success,
+      title: "Success",
+      message: "Chart saved",
+    });
   }
 
   function handleUpdate(chart: Chart) {
@@ -46,6 +63,12 @@ export default function Command() {
     const index = newCharts.findIndex((c) => c.id === chart.id);
     newCharts[index] = chart;
     updateCharts(newCharts);
+
+    showToast({
+      style: Toast.Style.Success,
+      title: "Success",
+      message: "Chart updated",
+    });
   }
 
   function handleDelete(chart: Chart) {
@@ -53,6 +76,12 @@ export default function Command() {
     const index = newCharts.findIndex((c) => c.id === chart.id);
     newCharts.splice(index, 1);
     updateCharts(newCharts);
+
+    showToast({
+      style: Toast.Style.Success,
+      title: "Success",
+      message: "Chart deleted",
+    });
   }
 
   return (
@@ -164,13 +193,7 @@ export default function Command() {
 }
 
 function CreateChartForm(props: { onSubmit: (chart: Chart) => void }) {
-  return (
-    <ChartForm
-      onSubmit={props.onSubmit}
-      submitLabel="Save chart"
-      successMessage="Chart saved"
-    />
-  );
+  return <ChartForm onSubmit={props.onSubmit} submitLabel="Save chart" />;
 }
 
 function UpdateChartForm(props: {
@@ -182,7 +205,6 @@ function UpdateChartForm(props: {
       onSubmit={props.onSubmit}
       defaults={props.defaults}
       submitLabel="Update chart"
-      successMessage="Chart updated"
     />
   );
 }
@@ -190,7 +212,6 @@ function UpdateChartForm(props: {
 function ChartForm(props: {
   defaults?: Chart;
   submitLabel?: string;
-  successMessage?: string;
   onSubmit: (chart: Chart) => void;
 }) {
   const { pop } = useNavigation();
@@ -214,11 +235,6 @@ function ChartForm(props: {
         type: isExplorer ? "explorer" : "grapher",
         tagLine: data.tagLine,
         createdAt: new Date(),
-      });
-      showToast({
-        style: Toast.Style.Success,
-        title: "Success",
-        message: props.successMessage,
       });
       pop();
     },
