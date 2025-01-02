@@ -228,6 +228,7 @@ export default function Command() {
             title={`${pr.title}`}
             icon={linkIcon}
             accessories={[{ date: pr.updatedAt }]}
+            keywords={[pr.branch]}
             detail={<List.Item.Detail markdown={detail} />}
             actions={
               <LinkActionPanel
