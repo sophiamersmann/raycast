@@ -7,6 +7,7 @@ import {
   open,
   Keyboard,
   Color,
+  Clipboard,
 } from "@raycast/api";
 
 import {
@@ -15,6 +16,7 @@ import {
   fetchVariables,
   fetchChart,
   useClipboard,
+  makeThumbnailUrl,
 } from "./utils/helpers";
 import { ARC_PATH, BROWSER_PATH, CHART_TYPES } from "./utils/constants";
 import { OpenInArcAction, OpenInBrowserAction } from "./utils/components";
@@ -57,7 +59,11 @@ export default function Command() {
   const { clipboardText, isLoading: isLoadingClipboardText } = useClipboard();
   const copiedText = clipboardText.trim();
 
-  const [isShowingDetail, setIsShowingDetail] = useState(false);
+  const [isShowingChartConfigDetail, setIsShowingChartConfigDetail] =
+    useState(false);
+  const [isShowingChartPreviewDetail, setIsShowingChartPreviewDetail] =
+    useState(false);
+
   const [stagingSitesFilter, setStagingSitesFilter] = useState(
     StagingSitesFilter.Mine,
   );
@@ -157,20 +163,29 @@ export default function Command() {
   const isLoading =
     isLoadingClipboardText || isLoadingPullRequests || isLoadingChart;
 
-  const detail = content.chartConfig
-    ? makeDetail(content.chartConfig)
-    : undefined;
-
+  const isShowingDetail =
+    isShowingChartConfigDetail || isShowingChartPreviewDetail;
+  const hasChartConfigDetail = !!content.chartConfig;
+  const hasChartPreviewDetail = !!content.chartSlug;
+  const hasDetail = hasChartConfigDetail || hasChartPreviewDetail;
+  const detailType = isShowingChartConfigDetail
+    ? "config"
+    : isShowingChartPreviewDetail
+      ? "preview"
+      : "none";
   const detailProps = {
-    hasDetail: !!detail,
-    isShowingDetail,
-    setIsShowingDetail,
+    hasChartConfigDetail,
+    hasChartPreviewDetail,
+    isShowingChartConfigDetail,
+    setIsShowingChartConfigDetail,
+    isShowingChartPreviewDetail,
+    setIsShowingChartPreviewDetail,
   };
 
   return (
     <List
       isLoading={isLoading}
-      isShowingDetail={!!detail && isShowingDetail}
+      isShowingDetail={hasDetail && isShowingDetail}
       searchBarAccessory={
         <List.Dropdown
           tooltip="Select which staging sites to show"
@@ -194,7 +209,11 @@ export default function Command() {
         title={`Live`}
         subtitle={makeUrl(liveUrl, content.pathname, content.queryParams)}
         icon={linkIcon}
-        detail={<List.Item.Detail markdown={detail} />}
+        detail={
+          <List.Item.Detail
+            markdown={makeDetail(LIVE_URL, content, detailType)}
+          />
+        }
         actions={
           <LinkActionPanel
             baseUrl={LIVE_URL}
@@ -208,7 +227,6 @@ export default function Command() {
         title={`Local`}
         subtitle={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
         icon={linkIcon}
-        detail={<List.Item.Detail markdown={detail} />}
         actions={
           <LinkActionPanel
             baseUrl={LOCAL_URL}
@@ -229,7 +247,11 @@ export default function Command() {
             icon={linkIcon}
             accessories={[{ date: pr.updatedAt }]}
             keywords={[pr.branch]}
-            detail={<List.Item.Detail markdown={detail} />}
+            detail={
+              <List.Item.Detail
+                markdown={makeDetail(pr.stagingUrl, content, detailType)}
+              />
+            }
             actions={
               <LinkActionPanel
                 baseUrl={pr.stagingUrl}
@@ -251,17 +273,23 @@ function LinkActionPanel({
   baseAdminUrl,
   branch,
   data,
-  hasDetail,
-  isShowingDetail,
-  setIsShowingDetail,
+  hasChartConfigDetail,
+  hasChartPreviewDetail,
+  isShowingChartConfigDetail,
+  setIsShowingChartConfigDetail,
+  isShowingChartPreviewDetail,
+  setIsShowingChartPreviewDetail,
 }: {
   baseUrl: string;
   baseAdminUrl: string;
   branch?: string;
   data: Data;
-  hasDetail: boolean;
-  isShowingDetail: boolean;
-  setIsShowingDetail: (value: boolean) => void;
+  hasChartConfigDetail: boolean;
+  hasChartPreviewDetail: boolean;
+  isShowingChartConfigDetail: boolean;
+  setIsShowingChartConfigDetail: (value: boolean) => void;
+  isShowingChartPreviewDetail: boolean;
+  setIsShowingChartPreviewDetail: (value: boolean) => void;
 }) {
   const url = makeUrl(
     data.isAdminUrl ? baseAdminUrl : baseUrl,
@@ -310,7 +338,7 @@ function LinkActionPanel({
       )}
       {!data.isAdminUrl && data.chartId && (
         <Action
-          title="Open Chart Editor"
+          title="Open Admin"
           icon={Icon.Globe}
           onAction={() => {
             const chartEditorUrl = makeUrl(
@@ -362,12 +390,38 @@ function LinkActionPanel({
       </ActionPanel.Section>
 
       <ActionPanel.Section>
-        {hasDetail && (
+        {hasChartPreviewDetail && (
           <Action
-            title={(isShowingDetail ? "Hide" : "Show") + " Chart Config"}
-            icon={isShowingDetail ? Icon.ArrowsContract : Icon.ArrowsExpand}
+            title={
+              (isShowingChartPreviewDetail ? "Hide" : "Show") + " Chart Preview"
+            }
+            icon={
+              isShowingChartPreviewDetail
+                ? Icon.ArrowsContract
+                : Icon.ArrowsExpand
+            }
             onAction={() => {
-              setIsShowingDetail(!isShowingDetail);
+              setIsShowingChartPreviewDetail(!isShowingChartPreviewDetail);
+              setIsShowingChartConfigDetail(false);
+            }}
+          />
+        )}
+      </ActionPanel.Section>
+
+      <ActionPanel.Section>
+        {hasChartConfigDetail && (
+          <Action
+            title={
+              (isShowingChartConfigDetail ? "Hide" : "Show") + " Chart Config"
+            }
+            icon={
+              isShowingChartConfigDetail
+                ? Icon.ArrowsContract
+                : Icon.ArrowsExpand
+            }
+            onAction={() => {
+              setIsShowingChartConfigDetail(!isShowingChartConfigDetail);
+              setIsShowingChartPreviewDetail(false);
             }}
           />
         )}
@@ -476,11 +530,34 @@ const makePartialUrl = (pathname?: string, queryParams?: string) => {
   return `${pathname}${queryParams ? `?${queryParams}` : ""}`;
 };
 
-const makeDetail = (chartConfig: Record<string, unknown>) => {
+const makeChartConfigDetail = (chartConfig?: Record<string, unknown>) => {
+  if (!chartConfig) return undefined;
   let detail = "```json\n";
   detail += JSON.stringify(chartConfig, null, 2);
   detail += "\n```";
   return detail;
+};
+
+const makeChartPreviewDetail = (baseUrl: string, chartSlug?: string) => {
+  if (!chartSlug) return undefined;
+  const url = makeUrl(baseUrl, `/grapher/${chartSlug}`);
+  const thumbnailUrl = makeThumbnailUrl(url);
+  return `![Chart](${thumbnailUrl})`;
+};
+
+const makeDetail = (
+  baseUrl: string,
+  data: Data,
+  type: "config" | "preview" | "none",
+) => {
+  switch (type) {
+    case "none":
+      return undefined;
+    case "config":
+      return makeChartConfigDetail(data.chartConfig);
+    case "preview":
+      return makeChartPreviewDetail(baseUrl, data.chartSlug);
+  }
 };
 
 const linkIcon = {
