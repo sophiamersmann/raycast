@@ -12,6 +12,8 @@ import {
   showToast,
   Toast,
   useNavigation,
+  Clipboard,
+  open,
 } from "@raycast/api";
 import { FormValidation, useForm } from "@raycast/utils";
 
@@ -159,6 +161,16 @@ export default function Command() {
             <ActionPanel>
               <ActionPanel.Section>
                 <OpenChartAction chart={chart} browser="chrome" />
+                <Action
+                  title="Open Page..."
+                  icon={Icon.Globe}
+                  onAction={async () => {
+                    await Clipboard.copy(chart.url);
+                    open(
+                      "raycast://extensions/sophiamersmann/owid/open-owid-page",
+                    );
+                  }}
+                />
                 <OpenChartAction chart={chart} browser="arc" />
               </ActionPanel.Section>
               <ActionPanel.Section>
