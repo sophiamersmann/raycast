@@ -17,18 +17,23 @@ export function usePullRequests(repo: string, userName?: string) {
 
   const pullRequests = data
     .filter((pr) => (userName ? pr.user.login === userName : true))
-    .map((pr) => ({
-      title: pr.title,
-      branch: pr.head.ref,
-      updatedAt: new Date(pr.updated_at),
-      stagingUrl: makeStagingUrl(pr.head.ref),
-    }));
+    .map((pr) => {
+      const branch = pr.head.ref;
+      const staging = makeStaging(branch);
+      return {
+        title: pr.title,
+        branch,
+        updatedAt: new Date(pr.updated_at),
+        staging: staging,
+        stagingUrl: `http://${staging}`,
+      };
+    });
 
   return { pullRequests, isLoading };
 }
 
-function makeStagingUrl(branchName: string) {
-  return `http://staging-site-${branchName.slice(0, 28)}`;
+function makeStaging(branchName: string) {
+  return `staging-site-${branchName.slice(0, 28)}`;
 }
 
 function fetchFromDatasette<TRow>(query: string, options?: { ttl?: number }) {

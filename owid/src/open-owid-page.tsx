@@ -7,7 +7,6 @@ import {
   open,
   Keyboard,
   Color,
-  Clipboard,
 } from "@raycast/api";
 
 import {
@@ -257,6 +256,7 @@ export default function Command() {
                 baseUrl={pr.stagingUrl}
                 baseAdminUrl={pr.stagingUrl}
                 branch={pr.branch}
+                staging={pr.staging}
                 data={content}
                 {...detailProps}
               />
@@ -272,6 +272,7 @@ function LinkActionPanel({
   baseUrl,
   baseAdminUrl,
   branch,
+  staging,
   data,
   hasChartConfigDetail,
   hasChartPreviewDetail,
@@ -283,6 +284,7 @@ function LinkActionPanel({
   baseUrl: string;
   baseAdminUrl: string;
   branch?: string;
+  staging?: string;
   data: Data;
   hasChartConfigDetail: boolean;
   hasChartPreviewDetail: boolean;
@@ -384,7 +386,13 @@ function LinkActionPanel({
         {branch && (
           <Action.CopyToClipboard
             title="Copy SSH Command"
-            content={`ssh owid@staging-site-${branch}`}
+            content={`ssh owid@${staging}`}
+          />
+        )}
+        {branch && (
+          <Action.CopyToClipboard
+            title="Copy Destroy Command"
+            content={`owid-lxc destroy ${staging}`}
           />
         )}
       </ActionPanel.Section>
