@@ -6,7 +6,7 @@ import { useFetch, usePromise } from "@raycast/utils";
 import { ChartsFileContent, ChartType, PullRequest, RawChart } from "./types";
 import { CHART_TYPE_DATA, CHARTS_STORAGE_PATH } from "./constants";
 
-const DATASETTE_API_URL = "https://datasette-public.owid.io/owid.json";
+const DATASETTE_API_URL = "http://analytics/private.json";
 
 export function usePullRequests(repo: string, userName?: string) {
   const GITHUB_API_URL = `https://api.github.com/repos/${repo}/pulls`;
@@ -87,27 +87,18 @@ export function fetchRandomCharts() {
   const query = `
     with randomRows as (
       select
-        slug,
-        type,
+        cc.slug as slug,
+        cc.chartType as type,
         row_number() over (
-          partition by type
+          partition by cc.chartType
           order by
             random()
         ) as rn
       from
-        charts
+        charts c
+        join chart_configs cc on cc.id = c.configId
       where
-        type in (
-          'LineChart',
-          'StackedArea',
-          'StackedBar',
-          'ScatterPlot',
-          'DiscreteBar',
-          'SlopeChart',
-          'StackedDiscreteBar',
-          'Marimekko'
-        )
-        and json_extract(configWithDefaults, '$.hasChartTab') is not false
+        cc.chartType is not null
     )
     select
       slug,
