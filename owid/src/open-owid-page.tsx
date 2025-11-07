@@ -40,7 +40,8 @@ const GITHUB_REPO = "owid/owid-grapher";
 const GITHUB_USER_NAME = "sophiamersmann";
 
 const LIVE_URL = "https://ourworldindata.org";
-const LOCAL_URL = "http://localhost:3030";
+const LOCAL_DEV_URL = "http://localhost:3030";
+const LOCAL_AGENT_URL = "http://localhost:3031";
 
 const LIVE_ADMIN_URL = "https://admin.owid.io";
 
@@ -83,7 +84,8 @@ export default function Command() {
     const owidUrls = [
       LIVE_URL,
       LIVE_ADMIN_URL,
-      LOCAL_URL,
+      LOCAL_DEV_URL,
+      LOCAL_AGENT_URL,
       "http://staging-site-",
     ];
     const isOwidUrl = owidUrls.some((validUrl) =>
@@ -205,7 +207,7 @@ export default function Command() {
       }
     >
       <List.Item
-        title={`Live`}
+        title={`Prod`}
         subtitle={makeUrl(liveUrl, content.pathname, content.queryParams)}
         icon={linkIcon}
         detail={
@@ -223,13 +225,30 @@ export default function Command() {
         }
       />
       <List.Item
-        title={`Local`}
-        subtitle={makeUrl(LOCAL_URL, content.pathname, content.queryParams)}
+        title={`Dev`}
+        subtitle={makeUrl(LOCAL_DEV_URL, content.pathname, content.queryParams)}
         icon={linkIcon}
         actions={
           <LinkActionPanel
-            baseUrl={LOCAL_URL}
-            baseAdminUrl={LOCAL_URL}
+            baseUrl={LOCAL_DEV_URL}
+            baseAdminUrl={LOCAL_DEV_URL}
+            data={content}
+            {...detailProps}
+          />
+        }
+      />
+      <List.Item
+        title={`Agent`}
+        subtitle={makeUrl(
+          LOCAL_AGENT_URL,
+          content.pathname,
+          content.queryParams,
+        )}
+        icon={linkIcon}
+        actions={
+          <LinkActionPanel
+            baseUrl={LOCAL_AGENT_URL}
+            baseAdminUrl={LOCAL_AGENT_URL}
             data={content}
             {...detailProps}
           />
