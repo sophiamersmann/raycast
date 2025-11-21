@@ -445,9 +445,6 @@ function LinkActionPanel({
             }}
           />
         )}
-      </ActionPanel.Section>
-
-      <ActionPanel.Section>
         {hasChartConfigDetail && (
           <Action
             title={
@@ -478,6 +475,40 @@ function LinkActionPanel({
           />
         )}
       </ActionPanel.Section>
+
+      {!isLivePage && (
+        <ActionPanel.Section title="Test Pages">
+          {!data.isAdminUrl && (
+            <Action
+              title="Open Test Page"
+              icon={Icon.Bug}
+              onAction={() => {
+                const adminTestUrl = makeUrl(baseAdminUrl, "/admin/test");
+                open(
+                  adminTestUrl,
+                  baseUrl === LIVE_URL ? ARC_PATH : GOOGLE_CHROME_PATH,
+                );
+              }}
+            />
+          )}
+          {!data.isAdminUrl && data.chartId && (
+            <Action
+              title="Open Chart Test Page"
+              icon={Icon.Bug}
+              onAction={() => {
+                const chartTestUrl = makeUrl(
+                  baseAdminUrl,
+                  `/admin/test/embeds?ids=${data.chartId}`,
+                );
+                open(
+                  chartTestUrl,
+                  baseUrl === LIVE_URL ? ARC_PATH : GOOGLE_CHROME_PATH,
+                );
+              }}
+            />
+          )}
+        </ActionPanel.Section>
+      )}
 
       <ActionPanel.Section title="Charts">
         {data.pathname !== "/grapher/life-expectancy" && (
