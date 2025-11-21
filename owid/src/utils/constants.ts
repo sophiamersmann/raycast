@@ -2,10 +2,9 @@ import { environment, Icon } from "@raycast/api";
 import { ChartType } from "./types";
 import { join } from "path";
 
-export const BROWSER_PATH = "/Applications/Google Chrome.app";
-export const BROWSER_NAME = "Google Chrome";
-
 export const ARC_PATH = "/Applications/Arc.app";
+export const GOOGLE_CHROME_PATH = "/Applications/Google Chrome.app";
+export const FIREFOX_PATH = "/Applications/Firefox.app";
 
 export const CHARTS_STORAGE_PATH = join(environment.supportPath, "charts.json");
 

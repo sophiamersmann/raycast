@@ -17,8 +17,12 @@ import {
   useClipboard,
   makeThumbnailUrl,
 } from "./utils/helpers";
-import { ARC_PATH, BROWSER_PATH, CHART_TYPES } from "./utils/constants";
-import { OpenInArcAction, OpenInBrowserAction } from "./utils/components";
+import { ARC_PATH, GOOGLE_CHROME_PATH, CHART_TYPES } from "./utils/constants";
+import {
+  OpenInArcAction,
+  OpenInChromeAction,
+  OpenInFirefoxAction,
+} from "./utils/components";
 
 interface Data {
   clipboardText?: string;
@@ -333,15 +337,23 @@ function LinkActionPanel({
   const isLivePage = baseUrl === LIVE_URL;
   const isLiveAdmin = isLivePage && data.isAdminUrl;
 
+  const isAgentPage = baseUrl === LOCAL_AGENT_URL;
+
   return (
     <ActionPanel>
       {isLiveAdmin ? (
         <OpenInArcAction url={url} />
+      ) : isAgentPage ? (
+        <OpenInFirefoxAction url={url} />
       ) : (
-        <OpenInBrowserAction url={url} />
+        <OpenInChromeAction url={url} />
       )}
       {isLiveAdmin ? (
-        <OpenInBrowserAction url={url} />
+        isAgentPage ? (
+          <OpenInFirefoxAction url={url} />
+        ) : (
+          <OpenInChromeAction url={url} />
+        )
       ) : (
         <OpenInArcAction url={url} />
       )}
@@ -353,7 +365,7 @@ function LinkActionPanel({
             const adminUrl = isLivePage
               ? LIVE_ADMIN_URL
               : makeUrl(baseUrl, "/admin");
-            open(adminUrl, isLivePage ? ARC_PATH : BROWSER_PATH);
+            open(adminUrl, isLivePage ? ARC_PATH : GOOGLE_CHROME_PATH);
           }}
         />
       )}
@@ -368,7 +380,7 @@ function LinkActionPanel({
             );
             open(
               chartEditorUrl,
-              baseUrl === LIVE_URL ? ARC_PATH : BROWSER_PATH,
+              baseUrl === LIVE_URL ? ARC_PATH : GOOGLE_CHROME_PATH,
             );
           }}
         />
@@ -382,7 +394,7 @@ function LinkActionPanel({
               baseUrl,
               `/grapher/${data.chartSlug}`,
             );
-            open(grapherPageUrl, BROWSER_PATH);
+            open(grapherPageUrl, GOOGLE_CHROME_PATH);
           }}
         />
       )}
@@ -461,7 +473,7 @@ function LinkActionPanel({
                 LIVE_URL,
                 `/grapher/${data.chartSlug}.config.json`,
               );
-              open(configUrl, BROWSER_PATH);
+              open(configUrl, GOOGLE_CHROME_PATH);
             }}
           />
         )}
@@ -473,7 +485,10 @@ function LinkActionPanel({
             title="Open Life Expectancy Chart"
             icon={Icon.LineChart}
             onAction={() => {
-              open(makeUrl(baseUrl, "/grapher/life-expectancy"), BROWSER_PATH);
+              open(
+                makeUrl(baseUrl, "/grapher/life-expectancy"),
+                GOOGLE_CHROME_PATH,
+              );
             }}
           />
         )}
@@ -484,7 +499,7 @@ function LinkActionPanel({
             onAction={() => {
               open(
                 makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
-                BROWSER_PATH,
+                GOOGLE_CHROME_PATH,
               );
             }}
           />
@@ -502,7 +517,7 @@ function LinkActionPanel({
                   onAction={() => {
                     open(
                       makeUrl(baseUrl, `/grapher/${randomChart.slug}`),
-                      BROWSER_PATH,
+                      GOOGLE_CHROME_PATH,
                     );
                   }}
                 />
@@ -522,7 +537,7 @@ function LinkActionPanel({
               onAction={() => {
                 open(
                   `https://api.ourworldindata.org/v1/indicators/${variable.id}.metadata.json`,
-                  BROWSER_PATH,
+                  GOOGLE_CHROME_PATH,
                 );
               }}
             />

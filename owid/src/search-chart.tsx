@@ -23,7 +23,7 @@ import {
   makeThumbnailUrl,
   persistCharts,
 } from "./utils/helpers";
-import { OpenInArcAction, OpenInBrowserAction } from "./utils/components";
+import { OpenInArcAction, OpenInChromeAction } from "./utils/components";
 import { CHART_TYPE_DATA, CHART_TYPES } from "./utils/constants";
 import { Chart, ChartType } from "./utils/types";
 
@@ -304,7 +304,7 @@ function OpenChartAction({
 }) {
   switch (browser) {
     case "chrome":
-      return <OpenInBrowserAction url={chart.url} />;
+      return <OpenInChromeAction url={chart.url} />;
     case "arc":
       return <OpenInArcAction url={chart.url} />;
   }
