@@ -29,3 +29,18 @@ export interface Chart extends Omit<RawChart, "createdAt"> {
 export interface ChartsFileContent {
   charts: Chart[];
 }
+
+export interface SearchResult {
+  title: string;
+  slug: string;
+  subtitle: string;
+  type: string;
+  url: string;
+  availableEntities?: string[];
+  availableTabs?: string[];
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchResult[];
+}
